@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>TV Repair CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7fa;--surface:#fff;--surface-2:#f9fafb;
+  --border:#e5e7eb;--text:#111827;--text-sub:#4b5563;--muted:#9ca3af;
+  --accent:#7c3aed;--accent-dark:#6d28d9;--accent-bg:#ede9fe;
+  --green:#10b981;--green-bg:#d1fae5;
+  --blue:#2563eb;--blue-bg:#eff6ff;
+  --red:#ef4444;--red-bg:#fee2e2;
+  --yellow:#f59e0b;--yellow-bg:#fef3c7;
+  --side-bg:#0f1629;--side-text:#cbd5e1;--side-active-bg:rgba(124,58,237,.2);--side-active-text:#a78bfa;
+  --radius:12px;--radius-lg:16px;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px -1px rgba(0,0,0,.04);
+  --font:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;}
+.hidden{display:none !important;}
+
+/* ── LOGIN ── */
+#authScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#0f1629,#1a2340);}
+.auth-box{background:var(--surface);border-radius:var(--radius-lg);padding:32px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.auth-title{font-size:22px;font-weight:800;margin-bottom:4px;}
+.auth-title span{color:var(--accent);}
+.auth-sub{font-size:13px;color:var(--text-sub);margin-bottom:22px;}
+.af{margin-bottom:14px;}
+.af label{display:block;font-size:13px;font-weight:600;color:var(--text-sub);margin-bottom:6px;}
+.af input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-family:var(--font);}
+.af input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,58,237,.1);}
+.auth-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font);margin-top:6px;}
+.auth-btn:hover{background:var(--accent-dark);}
+.auth-switch{text-align:center;font-size:13px;color:var(--text-sub);margin-top:16px;}
+.auth-switch a{color:var(--accent);font-weight:600;cursor:pointer;text-decoration:none;}
+.auth-err{background:var(--red-bg);color:#991b1b;padding:9px 12px;border-radius:8px;font-size:12px;margin-bottom:14px;display:none;}
+
+/* ── APP SHELL ── */
+.nav{background:var(--surface);border-bottom:1px solid var(--border);height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:50;}
+.nav-logo{font-weight:800;font-size:16px;}
+.nav-logo span{color:var(--accent);}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.nav-biz{font-size:13px;font-weight:600;}
+.btn-lo{background:transparent;border:1px solid var(--border);color:var(--text-sub);padding:7px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font);}
+.btn-lo:hover{border-color:var(--red);color:var(--red);background:var(--red-bg);}
+.menu-toggle{display:none;background:none;border:none;font-size:22px;cursor:pointer;}
+
+.layout{display:flex;min-height:calc(100vh - 58px);}
+.sidebar{width:230px;background:var(--side-bg);padding:16px 10px;flex-shrink:0;position:sticky;top:58px;height:calc(100vh - 58px);overflow-y:auto;}
+.sb-btn{display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;border:none;background:transparent;border-radius:10px;color:var(--side-text);font-size:14px;font-weight:500;cursor:pointer;text-align:left;font-family:var(--font);margin-bottom:3px;}
+.sb-btn:hover{background:#1a2340;color:#fff;}
+.sb-btn.on{background:var(--side-active-bg);color:var(--side-active-text);font-weight:700;}
+.sb-ico{font-size:17px;width:20px;text-align:center;}
+.sb-badge{background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:auto;}
+
+.content{flex:1;padding:22px;max-width:1300px;min-width:0;}
+.section{display:none;}
+.section.on{display:block;}
+
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;}
+.stat-ico{width:42px;height:42px;border-radius:11px;font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sc-blue .stat-ico{background:var(--blue-bg);color:var(--blue);}
+.sc-green .stat-ico{background:var(--green-bg);color:var(--green);}
+.sc-yellow .stat-ico{background:var(--yellow-bg);color:#d97706;}
+.sc-acc .stat-ico{background:var(--accent-bg);color:var(--accent);}
+.stat-val{font-size:20px;font-weight:800;line-height:1;}
+.stat-lbl{font-size:12px;color:var(--text-sub);margin-top:3px;}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px;box-shadow:var(--shadow);}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.panel-title{font-size:16px;font-weight:700;}
+.panel-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+.table-scroll{overflow-x:auto;}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);}
+thead tr{background:var(--surface-2);}
+th{padding:11px 13px;text-align:left;font-weight:600;color:var(--text-sub);font-size:11px;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:13px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--surface-2);}
+.empty td{text-align:center;padding:32px;color:var(--muted);}
+
+.abtn,.btn-save,.btn-cancel{padding:7px 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:var(--font);display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
+.ab-pri{background:var(--accent);color:#fff;}
+.ab-pri:hover{background:var(--accent-dark);}
+.ab-gr{background:var(--green);color:#fff;}
+.ab-gr:hover{background:#059669;}
+.ab-del{background:var(--red);color:#fff;}
+.ab-del:hover{background:#dc2626;}
+.ab-inv{background:var(--blue);color:#fff;}
+.ab-inv:hover{background:#1d4ed8;}
+.btn-save{background:var(--accent);color:#fff;padding:10px 18px;font-size:13px;}
+.btn-save:hover{background:var(--accent-dark);}
+.btn-cancel{background:var(--surface-2);color:var(--text-sub);border:1px solid var(--border);padding:10px 18px;font-size:13px;}
+
+.tag{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;}
+.tag.pending{background:var(--yellow-bg);color:#92400e;}
+.tag.in_progress{background:var(--blue-bg);color:#1e40af;}
+.tag.waiting_parts{background:#ede9fe;color:#5b21b6;}
+.tag.cost_sent{background:#fce7f3;color:#9d174d;}
+.tag.completed,.tag.delivered{background:var(--green-bg);color:#065f46;}
+.tag.cancelled{background:var(--red-bg);color:#991b1b;}
+
+.filter-sel,.search-in{padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:var(--font);background:var(--surface);}
+.filter-sel:focus,.search-in:focus{outline:none;border-color:var(--accent);}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;padding:20px;overflow-y:auto;align-items:flex-start;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:var(--radius-lg);padding:24px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);margin-top:30px;}
+.modal h3{margin-bottom:16px;}
+.mf{margin-bottom:14px;}
+.mf label{display:block;font-size:13px;font-weight:600;color:var(--text-sub);margin-bottom:6px;}
+.mf input,.mf select,.mf textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:var(--font);}
+.mf textarea{resize:vertical;min-height:70px;}
+.m-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.modal-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap;}
+
+#toasts{position:fixed;bottom:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--text);color:#fff;padding:11px 16px;border-radius:9px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.2);}
+.toast.err{background:var(--red);}
+
+@media(max-width:900px){
+  .menu-toggle{display:block;}
+  .sidebar{position:fixed;left:-240px;top:0;bottom:0;height:100vh;width:230px;z-index:300;transition:left .2s;padding-top:16px;}
+  .sidebar.on{left:0;}
+  .content{padding:14px;}
+  .m-grid{grid-template-columns:1fr;}
+  table{min-width:600px;}
+  .panel{overflow-x:auto;}
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen">
+  <div class="auth-box">
+    <div class="auth-title">TV Repair <span>CRM</span></div>
+    <div class="auth-sub" id="authSub">Login to your dashboard</div>
+    <div class="auth-err" id="authErr"></div>
+
+    <div id="loginForm">
+      <div class="af"><label>Email</label><input type="email" id="li-email" placeholder="you@business.com"></div>
+      <div class="af"><label>Password</label><input type="password" id="li-pass" placeholder="••••••••"></div>
+      <button class="auth-btn" id="loginBtn">Login</button>
+      <div class="auth-switch">New here? <a onclick="showSignup()">Create an account</a></div>
+    </div>
+
+    <div id="signupForm" class="hidden">
+      <div class="af"><label>Your Name</label><input type="text" id="su-name" placeholder="Full name"></div>
+      <div class="af"><label>Business Name</label><input type="text" id="su-business" placeholder="e.g. AN Electronics"></div>
+      <div class="af"><label>Email</label><input type="email" id="su-email" placeholder="you@business.com"></div>
+      <div class="af"><label>Password</label><input type="password" id="su-pass" placeholder="At least 6 characters"></div>
+      <button class="auth-btn" id="signupBtn">Create Account</button>
+      <div class="auth-switch">Already have an account? <a onclick="showLogin()">Login</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <nav class="nav">
+    <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('on')">☰</button>
+    <div class="nav-logo">TV Repair <span>CRM</span></div>
+    <div class="nav-right">
+      <div class="nav-biz" id="navBiz"></div>
+      <button class="btn-lo" id="logoutBtn">Logout</button>
+    </div>
+  </nav>
+
+  <div class="layout">
+    <div class="sidebar">
+      <button class="sb-btn on" data-sec="sec-overview"><span class="sb-ico">📊</span>Overview</button>
+      <button class="sb-btn" data-sec="sec-leads"><span class="sb-ico">📞</span>Leads / Calls <span class="sb-badge" id="newLeadsBadge">0</span></button>
+      <button class="sb-btn" data-sec="sec-jobs"><span class="sb-ico">🔧</span>All Jobs <span class="sb-badge" id="pendingBadge">0</span></button>
+      <button class="sb-btn" data-sec="sec-new-job"><span class="sb-ico">➕</span>New Job</button>
+      <button class="sb-btn" data-sec="sec-technicians"><span class="sb-ico">👤</span>Technicians</button>
+      <button class="sb-btn" data-sec="sec-customers"><span class="sb-ico">👥</span>Customers</button>
+      <button class="sb-btn" data-sec="sec-locations"><span class="sb-ico">📍</span>Locations</button>
+    </div>
+
+    <div class="content">
+
+      <!-- OVERVIEW -->
+      <div class="section on" id="sec-overview">
+        <div class="stats-grid">
+          <div class="stat-card sc-blue"><div class="stat-ico">⏳</div><div><div class="stat-val" id="st-pending">0</div><div class="stat-lbl">Pending Jobs</div></div></div>
+          <div class="stat-card sc-acc"><div class="stat-ico">🔧</div><div><div class="stat-val" id="st-inprog">0</div><div class="stat-lbl">In Progress</div></div></div>
+          <div class="stat-card sc-green"><div class="stat-ico">✅</div><div><div class="stat-val" id="st-done">0</div><div class="stat-lbl">Completed</div></div></div>
+          <div class="stat-card sc-yellow"><div class="stat-ico">💰</div><div><div class="stat-val" id="st-revenue">₹0</div><div class="stat-lbl">Total Revenue</div></div></div>
+          <div class="stat-card sc-blue"><div class="stat-ico">👥</div><div><div class="stat-val" id="st-customers">0</div><div class="stat-lbl">Total Customers</div></div></div>
+          <div class="stat-card sc-acc"><div class="stat-ico">📞</div><div><div class="stat-val" id="st-leads">0</div><div class="stat-lbl">Total Leads/Calls</div></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">🕒 Recent Jobs</div><button class="abtn ab-pri" onclick="showSection('sec-jobs')">View All →</button></div>
+          <div class="table-scroll"><table><thead><tr><th>ID</th><th>Customer</th><th>Service</th><th>Location</th><th>Status</th></tr></thead><tbody id="recentJobsTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- LEADS / CALLS -->
+      <div class="section" id="sec-leads">
+        <div class="stats-grid">
+          <div class="stat-card sc-blue"><div class="stat-ico">📞</div><div><div class="stat-val" id="lead-st-total">0</div><div class="stat-lbl">Total Leads / Calls</div></div></div>
+          <div class="stat-card sc-yellow"><div class="stat-ico">🆕</div><div><div class="stat-val" id="lead-st-new">0</div><div class="stat-lbl">New (Not Contacted)</div></div></div>
+          <div class="stat-card sc-green"><div class="stat-ico">✅</div><div><div class="stat-val" id="lead-st-converted">0</div><div class="stat-lbl">Converted to Job</div></div></div>
+          <div class="stat-card sc-acc"><div class="stat-ico">📈</div><div><div class="stat-val" id="lead-st-rate">0%</div><div class="stat-lbl">Conversion Rate</div></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">📍 Location-wise Breakdown</div></div>
+          <div class="table-scroll"><table><thead><tr><th>Location</th><th>Total Leads</th><th>Converted</th><th>Conv. Rate</th></tr></thead><tbody id="leadLocBreakdownTb"></tbody></table></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">📞 All Leads / Calls</div>
+            <div class="panel-acts">
+              <input class="search-in" id="leadSearch" placeholder="Search name/phone...">
+              <select class="filter-sel" id="leadLocFilter"><option value="">All Locations</option></select>
+              <select class="filter-sel" id="leadSourceFilter">
+                <option value="">All Sources</option>
+                <option value="google_ads">Google Ads</option>
+                <option value="gmb">Google My Business</option>
+                <option value="myoperator">MyOperator Call</option>
+                <option value="walkin">Walk-in</option>
+                <option value="referral">Referral</option>
+                <option value="website">Website</option>
+                <option value="other">Other</option>
+              </select>
+              <select class="filter-sel" id="leadStatusFilter">
+                <option value="">All Status</option>
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="converted">Converted</option>
+                <option value="lost">Lost</option>
+              </select>
+              <button class="abtn ab-inv" onclick="openCsvImport()">⇪ Import CSV</button>
+              <button class="abtn ab-pri" onclick="openLeadModal()">+ Add Lead</button>
+            </div>
+          </div>
+          <div class="table-scroll"><table><thead><tr><th>Name / Phone</th><th>Location</th><th>Source</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="leadsTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ALL JOBS -->
+      <div class="section" id="sec-jobs">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">🔧 All Jobs</div>
+            <div class="panel-acts">
+              <input class="search-in" id="jobSearch" placeholder="Search job/customer...">
+              <select class="filter-sel" id="statusFilter">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="waiting_parts">Waiting Parts</option>
+                <option value="cost_sent">Cost Sent</option>
+                <option value="completed">Completed</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <button class="abtn ab-pri" onclick="showSection('sec-new-job')">+ New Job</button>
+            </div>
+          </div>
+          <div class="table-scroll"><table><thead><tr><th>ID</th><th>Customer</th><th>Device</th><th>Service</th><th>Location</th><th>Technician</th><th>Status</th><th>Cost</th><th>Actions</th></tr></thead><tbody id="allJobsTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- NEW JOB -->
+      <div class="section" id="sec-new-job">
+        <div class="panel" style="max-width:560px;">
+          <div class="panel-head"><div class="panel-title">➕ Create New Job</div></div>
+          <div class="m-grid">
+            <div class="mf"><label>Customer Name *</label><input type="text" id="nj-cname" placeholder="Customer name"></div>
+            <div class="mf"><label>Customer Phone *</label><input type="tel" id="nj-cphone" placeholder="9876543210"></div>
+          </div>
+          <div class="m-grid">
+            <div class="mf"><label>Service Type *</label><input type="text" id="nj-service" placeholder="e.g. TV Repair, AC Service"></div>
+            <div class="mf"><label>Device / Model</label><input type="text" id="nj-device" placeholder="e.g. Samsung 43 inch"></div>
+          </div>
+          <div class="m-grid">
+            <div class="mf"><label>Priority</label><select id="nj-priority"><option value="normal">Normal</option><option value="urgent">Urgent</option><option value="vip">VIP</option></select></div>
+            <div class="mf"><label>Assign Technician</label><select id="nj-tech"><option value="">Not assigned</option></select></div>
+          </div>
+          <div class="mf"><label>📍 Location / Branch</label><select id="nj-location"><option value="">— Not specified —</option></select></div>
+          <div class="mf"><label>Description / Notes</label><textarea id="nj-desc" placeholder="Notes about this job..."></textarea></div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn-save" id="createJobBtn">✅ Create Job</button>
+            <button class="btn-cancel" onclick="showSection('sec-jobs')">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TECHNICIANS -->
+      <div class="section" id="sec-technicians">
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">👤 Technicians</div><button class="abtn ab-pri" onclick="document.getElementById('techModal').classList.add('open')">+ Add</button></div>
+          <div class="table-scroll"><table><thead><tr><th>Name</th><th>Phone</th><th>Skill</th><th>Completed Jobs</th><th>Action</th></tr></thead><tbody id="techsTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- CUSTOMERS -->
+      <div class="section" id="sec-customers">
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">👥 Customer History</div><input class="search-in" id="custSearch" placeholder="Search customer..."></div>
+          <div class="table-scroll"><table><thead><tr><th>Name</th><th>Phone</th><th>Total Jobs</th><th>Last Service</th></tr></thead><tbody id="custTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- LOCATIONS -->
+      <div class="section" id="sec-locations">
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">📍 Locations / Branches</div><button class="abtn ab-pri" onclick="openLocationModal()">+ Add Location</button></div>
+          <div class="table-scroll"><table><thead><tr><th>Name</th><th>Address</th><th>Phone</th><th>Action</th></tr></thead><tbody id="locationsTb"></tbody></table></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- JOB STATUS MODAL -->
+<div class="overlay" id="jobModal">
+  <div class="modal">
+    <h3 id="jmTitle">Job Details</h3>
+    <input type="hidden" id="jm-jobId">
+    <div class="m-grid">
+      <div class="mf"><label>Status</label>
+        <select id="jm-status">
+          <option value="pending">⏳ Pending</option>
+          <option value="in_progress">🔧 In Progress</option>
+          <option value="waiting_parts">📦 Waiting Parts</option>
+          <option value="cost_sent">💰 Cost Sent</option>
+          <option value="completed">✔️ Completed</option>
+          <option value="delivered">🎉 Delivered</option>
+          <option value="cancelled">❌ Cancelled</option>
+        </select>
+      </div>
+      <div class="mf"><label>Technician</label><select id="jm-tech"><option value="">Not assigned</option></select></div>
+    </div>
+    <div class="mf"><label>Status Note</label><input type="text" id="jm-note" placeholder="e.g. Part ordered, 2 days"></div>
+    <div class="mf"><label>Set Cost (₹)</label><input type="number" id="jm-cost" placeholder="e.g. 1500"></div>
+    <div class="modal-btns">
+      <button class="btn-save" id="saveJobBtn">Save Changes</button>
+      <button class="btn-cancel" onclick="document.getElementById('jobModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TECHNICIAN MODAL -->
+<div class="overlay" id="techModal">
+  <div class="modal">
+    <h3>Add Technician</h3>
+    <div class="m-grid">
+      <div class="mf"><label>Name *</label><input type="text" id="t-name" placeholder="Full name"></div>
+      <div class="mf"><label>Phone *</label><input type="tel" id="t-phone" placeholder="9876543210"></div>
+    </div>
+    <div class="mf"><label>Skill / Specialization</label><input type="text" id="t-skill" placeholder="TV, AC, Mobile"></div>
+    <div class="modal-btns">
+      <button class="btn-save" id="addStaffBtn">Add Technician</button>
+      <button class="btn-cancel" onclick="document.getElementById('techModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- LEAD MODAL -->
+<div class="overlay" id="leadModal">
+  <div class="modal">
+    <h3>Add Lead / Call</h3>
+    <div class="m-grid">
+      <div class="mf"><label>Name *</label><input type="text" id="lm-name" placeholder="Customer name"></div>
+      <div class="mf"><label>Phone *</label><input type="tel" id="lm-phone" placeholder="9876543210"></div>
+    </div>
+    <div class="m-grid">
+      <div class="mf"><label>Location / Branch</label><select id="lm-location"><option value="">— Select —</option></select></div>
+      <div class="mf"><label>Source</label>
+        <select id="lm-source">
+          <option value="google_ads">Google Ads</option>
+          <option value="gmb">Google My Business</option>
+          <option value="myoperator">MyOperator Call</option>
+          <option value="walkin">Walk-in</option>
+          <option value="referral">Referral</option>
+          <option value="website">Website</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="mf"><label>Notes</label><textarea id="lm-notes" placeholder="Call notes..."></textarea></div>
+    <div class="modal-btns">
+      <button class="btn-save" id="saveLeadBtn">Save Lead</button>
+      <button class="btn-cancel" onclick="document.getElementById('leadModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOCATION MODAL -->
+<div class="overlay" id="locationModal">
+  <div class="modal">
+    <h3 id="locationModalTitle">Add Location</h3>
+    <input type="hidden" id="lc-id">
+    <div class="mf"><label>Location Name *</label><input type="text" id="lc-name" placeholder="e.g. Kothrud Branch"></div>
+    <div class="mf"><label>Address</label><input type="text" id="lc-address" placeholder="Shop address"></div>
+    <div class="mf"><label>Phone</label><input type="tel" id="lc-phone" placeholder="9876543210"></div>
+    <div class="modal-btns">
+      <button class="btn-save" id="saveLocationBtn">Save Location</button>
+      <button class="btn-cancel" onclick="document.getElementById('locationModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV IMPORT MODAL -->
+<div class="overlay" id="csvImportModal">
+  <div class="modal" style="max-width:700px;">
+    <h3>⇪ Import Leads/Calls from CSV</h3>
+    <p style="font-size:12px;color:var(--text-sub);margin:6px 0 14px;">Export your call log from MyOperator (or any CSV with Name/Phone/Location columns) and upload it here.</p>
+    <div class="mf"><input type="file" id="csvFileInput" accept=".csv"></div>
+    <div id="csvMappingWrap" class="hidden">
+      <div style="font-size:13px;font-weight:600;margin:14px 0 8px;">Map Columns</div>
+      <div class="m-grid" id="csvMappingGrid"></div>
+      <div style="font-size:13px;font-weight:600;margin:14px 0 8px;">Preview (first 5 rows)</div>
+      <div class="table-scroll"><table><thead id="csvPreviewHead"></thead><tbody id="csvPreviewBody"></tbody></table></div>
+      <div style="font-size:12px;color:var(--text-sub);margin-top:8px;" id="csvSummary"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-save hidden" id="csvImportBtn">Import Leads</button>
+      <button class="btn-cancel" onclick="document.getElementById('csvImportModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+var token = localStorage.getItem('crm_token') || '';
+var allJobs = [], allTechs = [], allLocations = [], allLeads = [];
+var convertingLeadId = null;
+var csvHeaders = [], csvRows = [];
+
+function toast(msg, type){
+  var el = document.createElement('div');
+  el.className = 'toast ' + (type === 'err' ? 'err' : '');
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(function(){ el.remove(); }, 3500);
+}
+function fmtDate(iso){ if(!iso) return '—'; var d = new Date(iso); return d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear(); }
+function api(path, method, body){
+  var opts = { method: method || 'GET', headers: { 'x-token': token } };
+  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  return fetch('/api' + path, opts).then(function(r){ return r.json(); });
+}
+
+// ── AUTH ──
+function showSignup(){
+  document.getElementById('loginForm').classList.add('hidden');
+  document.getElementById('signupForm').classList.remove('hidden');
+  document.getElementById('authSub').textContent = 'Create your business account';
+  document.getElementById('authErr').style.display = 'none';
+}
+function showLogin(){
+  document.getElementById('signupForm').classList.add('hidden');
+  document.getElementById('loginForm').classList.remove('hidden');
+  document.getElementById('authSub').textContent = 'Login to your dashboard';
+  document.getElementById('authErr').style.display = 'none';
+}
+function authError(msg){
+  var el = document.getElementById('authErr');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+document.getElementById('loginBtn').addEventListener('click', function(){
+  var email = document.getElementById('li-email').value.trim();
+  var password = document.getElementById('li-pass').value;
+  if(!email || !password){ authError('Email and password required'); return; }
+  api('/login','POST',{ email: email, password: password }).then(function(d){
+    if(!d.ok){ authError(d.msg); return; }
+    token = d.token; localStorage.setItem('crm_token', token);
+    startApp(d.name, d.business);
+  });
+});
+
+document.getElementById('signupBtn').addEventListener('click', function(){
+  var name = document.getElementById('su-name').value.trim();
+  var business = document.getElementById('su-business').value.trim();
+  var email = document.getElementById('su-email').value.trim();
+  var password = document.getElementById('su-pass').value;
+  if(!name || !email || !password){ authError('All fields except business name are required'); return; }
+  api('/signup','POST',{ name: name, business: business, email: email, password: password }).then(function(d){
+    if(!d.ok){ authError(d.msg); return; }
+    token = d.token; localStorage.setItem('crm_token', token);
+    startApp(d.name, d.business);
+  });
+});
+
+document.getElementById('logoutBtn').addEventListener('click', function(){
+  localStorage.removeItem('crm_token');
+  window.location.reload();
+});
+
+function startApp(name, business){
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('navBiz').textContent = business || name;
+  loadAll();
+}
+
+// Auto-login if token exists
+if (token) {
+  api('/me').then(function(d){
+    if(d.ok){ startApp(d.user.name, d.user.business); }
+    else { localStorage.removeItem('crm_token'); token=''; }
+  });
+}
+
+// ── NAV ──
+function showSection(id){
+  document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('on'); });
+  document.querySelectorAll('.sb-btn').forEach(function(b){ b.classList.remove('on'); });
+  document.getElementById(id).classList.add('on');
+  var btn = document.querySelector('[data-sec="'+id+'"]');
+  if(btn) btn.classList.add('on');
+  if (window.innerWidth <= 900) document.querySelector('.sidebar').classList.remove('on');
+}
+document.querySelectorAll('.sb-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){ showSection(this.getAttribute('data-sec')); });
+});
+document.querySelectorAll('.overlay').forEach(function(o){
+  o.addEventListener('click', function(e){ if(e.target === o) o.classList.remove('open'); });
+});
+
+function loadAll(){ loadJobs(); loadTechs(); loadCustomers(); loadLocations(); loadLeadStats(); loadLeads(); }
+
+// ── JOBS ──
+function loadJobs(){
+  api('/jobs').then(function(d){
+    if(!d.ok) return;
+    allJobs = d.jobs || [];
+    var pending = allJobs.filter(function(j){ return j.status==='pending'; }).length;
+    var inprog = allJobs.filter(function(j){ return j.status==='in_progress'; }).length;
+    var done = allJobs.filter(function(j){ return j.status==='completed'||j.status==='delivered'; }).length;
+    var revenue = allJobs.filter(function(j){ return j.cost; }).reduce(function(a,j){ return a + (parseFloat(j.cost)||0); }, 0);
+    document.getElementById('st-pending').textContent = pending;
+    document.getElementById('st-inprog').textContent = inprog;
+    document.getElementById('st-done').textContent = done;
+    document.getElementById('st-revenue').textContent = '₹' + revenue.toLocaleString('en-IN');
+    document.getElementById('pendingBadge').textContent = pending;
+    renderRecentJobs(allJobs.slice(0,6));
+    renderAllJobs();
+  });
+}
+
+function statusTag(s){
+  var labels = { pending:'⏳ Pending', in_progress:'🔧 In Progress', waiting_parts:'📦 Waiting Parts', cost_sent:'💰 Cost Sent', completed:'✅ Completed', delivered:'📦 Delivered', cancelled:'❌ Cancelled' };
+  return '<span class="tag '+s+'">'+(labels[s]||s)+'</span>';
+}
+
+function renderRecentJobs(jobs){
+  document.getElementById('recentJobsTb').innerHTML = jobs.length ? jobs.map(function(j){
+    return '<tr><td style="font-family:monospace;color:var(--accent);">'+j.jobId+'</td><td>'+j.customerName+'</td><td>'+j.serviceType+'</td><td>'+(j.location||'—')+'</td><td>'+statusTag(j.status)+'</td></tr>';
+  }).join('') : '<tr class="empty"><td colspan="5">No jobs yet</td></tr>';
+}
+
+function renderAllJobs(){
+  var fs = document.getElementById('statusFilter').value;
+  var sq = document.getElementById('jobSearch').value.toLowerCase();
+  var filtered = allJobs.filter(function(j){
+    return (!fs || j.status===fs) && (!sq || j.jobId.toLowerCase().indexOf(sq)!==-1 || j.customerName.toLowerCase().indexOf(sq)!==-1 || j.customerPhone.indexOf(sq)!==-1);
+  });
+  document.getElementById('allJobsTb').innerHTML = filtered.length ? filtered.map(function(j){
+    return '<tr>'
+      +'<td style="font-family:monospace;color:var(--accent);font-weight:700;">'+j.jobId+'</td>'
+      +'<td><div style="font-weight:600;">'+j.customerName+'</div><div style="font-size:11px;color:var(--muted);">+'+j.customerPhone+'</div></td>'
+      +'<td style="font-size:12px;color:var(--text-sub);">'+(j.deviceModel||'—')+'</td>'
+      +'<td style="font-size:12px;">'+j.serviceType+'</td>'
+      +'<td style="font-size:12px;">'+(j.location||'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--text-sub);">'+(j.technicianName||'—')+'</td>'
+      +'<td>'+statusTag(j.status)+'</td>'
+      +'<td style="font-weight:700;">'+(j.cost?'₹'+j.cost:'—')+'</td>'
+      +'<td><button class="abtn ab-pri" onclick="openJob(\''+j.jobId+'\')">Manage</button></td>'
+      +'</tr>';
+  }).join('') : '<tr class="empty"><td colspan="9">No jobs found</td></tr>';
+}
+document.getElementById('jobSearch').addEventListener('input', renderAllJobs);
+document.getElementById('statusFilter').addEventListener('change', renderAllJobs);
+
+function openJob(jobId){
+  var job = allJobs.find(function(j){ return j.jobId===jobId; });
+  if(!job) return;
+  document.getElementById('jmTitle').textContent = jobId + ' — ' + job.customerName;
+  document.getElementById('jm-jobId').value = jobId;
+  document.getElementById('jm-status').value = job.status;
+  document.getElementById('jm-note').value = '';
+  document.getElementById('jm-cost').value = job.cost || '';
+  var techSel = document.getElementById('jm-tech');
+  techSel.innerHTML = '<option value="">Not assigned</option>' + allTechs.map(function(t){
+    return '<option value="'+t._id+'" '+(job.technicianId===t._id.toString()?'selected':'')+'>'+t.name+'</option>';
+  }).join('');
+  document.getElementById('jobModal').classList.add('open');
+}
+
+document.getElementById('saveJobBtn').addEventListener('click', function(){
+  var jobId = document.getElementById('jm-jobId').value;
+  var status = document.getElementById('jm-status').value;
+  var note = document.getElementById('jm-note').value;
+  var techId = document.getElementById('jm-tech').value;
+  var cost = document.getElementById('jm-cost').value;
+  var calls = [ api('/jobs/'+jobId+'/status','PUT',{ status: status, note: note }) ];
+  if (techId) calls.push(api('/jobs/'+jobId+'/technician','PUT',{ technicianId: techId }));
+  if (cost) calls.push(api('/jobs/'+jobId+'/cost','PUT',{ cost: cost }));
+  Promise.all(calls).then(function(){
+    toast('Job updated!');
+    document.getElementById('jobModal').classList.remove('open');
+    loadJobs();
+  });
+});
+
+document.getElementById('createJobBtn').addEventListener('click', function(){
+  var cn = document.getElementById('nj-cname').value.trim();
+  var cp = document.getElementById('nj-cphone').value.trim();
+  var svc = document.getElementById('nj-service').value.trim();
+  var dev = document.getElementById('nj-device').value.trim();
+  var pri = document.getElementById('nj-priority').value;
+  var tech = document.getElementById('nj-tech').value;
+  var loc = document.getElementById('nj-location').value;
+  var desc = document.getElementById('nj-desc').value.trim();
+  if(!cn || !cp || !svc){ toast('Name, phone and service type required!','err'); return; }
+  api('/jobs','POST',{ customerName:cn, customerPhone:cp, serviceType:svc, deviceModel:dev, priority:pri, location:loc, description:desc }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Job created: ' + d.job.jobId);
+    if (tech) api('/jobs/'+d.job.jobId+'/technician','PUT',{ technicianId: tech });
+    if (convertingLeadId) {
+      api('/leads/'+convertingLeadId+'/link-job','PUT',{ jobId: d.job.jobId }).then(function(){ loadLeads(); loadLeadStats(); });
+      convertingLeadId = null;
+    }
+    ['nj-cname','nj-cphone','nj-service','nj-device','nj-desc'].forEach(function(id){ document.getElementById(id).value=''; });
+    document.getElementById('nj-location').value='';
+    showSection('sec-jobs');
+    setTimeout(loadJobs, 300);
+  });
+});
+
+// ── TECHNICIANS ──
+function loadTechs(){
+  api('/technicians').then(function(d){
+    if(!d.ok) return;
+    allTechs = d.technicians || [];
+    var opts = allTechs.map(function(t){ return '<option value="'+t._id+'">'+t.name+' ('+(t.skill||'—')+')</option>'; }).join('');
+    document.getElementById('nj-tech').innerHTML = '<option value="">Not assigned</option>' + opts;
+    document.getElementById('techsTb').innerHTML = allTechs.length ? allTechs.map(function(t){
+      return '<tr><td style="font-weight:600;">'+t.name+'</td><td style="font-size:12px;color:var(--text-sub);">+'+t.phone+'</td><td style="font-size:12px;">'+(t.skill||'—')+'</td><td style="color:var(--green);font-weight:700;">'+(t.jobsCompleted||0)+'</td><td><button class="abtn ab-del" onclick="deleteTech(\''+t._id+'\')">Delete</button></td></tr>';
+    }).join('') : '<tr class="empty"><td colspan="5">No technicians added</td></tr>';
+  });
+}
+document.getElementById('addStaffBtn').addEventListener('click', function(){
+  var name = document.getElementById('t-name').value.trim();
+  var phone = document.getElementById('t-phone').value.trim();
+  var skill = document.getElementById('t-skill').value.trim();
+  if(!name || !phone){ toast('Name and phone required!','err'); return; }
+  api('/technicians','POST',{ name:name, phone:phone, skill:skill }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Technician added!');
+    document.getElementById('techModal').classList.remove('open');
+    ['t-name','t-phone','t-skill'].forEach(function(id){ document.getElementById(id).value=''; });
+    loadTechs();
+  });
+});
+function deleteTech(id){
+  if(!confirm('Delete this technician?')) return;
+  api('/technicians/'+id,'DELETE').then(function(){ toast('Deleted!'); loadTechs(); });
+}
+
+// ── CUSTOMERS ──
+function loadCustomers(){
+  api('/customers').then(function(d){
+    if(!d.ok) return;
+    document.getElementById('st-customers').textContent = (d.customers||[]).length;
+    renderCustomers(d.customers||[]);
+  });
+}
+function renderCustomers(custs){
+  document.getElementById('custTb').innerHTML = custs.length ? custs.map(function(c){
+    return '<tr><td style="font-weight:600;">'+c.name+'</td><td style="font-size:12px;color:var(--text-sub);">+'+c.phone+'</td><td style="color:var(--accent);font-weight:700;">'+c.totalJobs+'</td><td style="font-size:12px;color:var(--text-sub);">'+fmtDate(c.lastJob)+'</td></tr>';
+  }).join('') : '<tr class="empty"><td colspan="4">No customers yet</td></tr>';
+}
+document.getElementById('custSearch').addEventListener('input', function(){
+  api('/customers?search='+encodeURIComponent(this.value)).then(function(d){ renderCustomers(d.customers||[]); });
+});
+
+// ── LOCATIONS ──
+function loadLocations(){
+  api('/locations').then(function(d){
+    if(!d.ok) return;
+    allLocations = d.locations || [];
+    var opts = allLocations.map(function(l){ return '<option value="'+l.name+'">'+l.name+'</option>'; }).join('');
+    document.getElementById('nj-location').innerHTML = '<option value="">— Not specified —</option>' + opts;
+    document.getElementById('lm-location').innerHTML = '<option value="">— Select —</option>' + opts;
+    document.getElementById('leadLocFilter').innerHTML = '<option value="">All Locations</option>' + opts;
+    renderLocationsTable();
+  });
+}
+function renderLocationsTable(){
+  document.getElementById('locationsTb').innerHTML = allLocations.length ? allLocations.map(function(l){
+    return '<tr><td style="font-weight:600;">'+l.name+'</td><td style="font-size:12px;color:var(--text-sub);">'+(l.address||'—')+'</td><td style="font-size:12px;color:var(--text-sub);">'+(l.phone?'+'+l.phone:'—')+'</td>'
+      +'<td><div style="display:flex;gap:4px;flex-wrap:wrap;"><button class="abtn ab-pri" onclick="editLocation(\''+l._id+'\')">Edit</button><button class="abtn ab-del" onclick="deleteLocation(\''+l._id+'\')">Delete</button></div></td></tr>';
+  }).join('') : '<tr class="empty"><td colspan="4">No locations added yet — add your shop branches here</td></tr>';
+}
+function openLocationModal(){
+  document.getElementById('locationModalTitle').textContent = 'Add Location';
+  document.getElementById('lc-id').value = '';
+  document.getElementById('lc-name').value = '';
+  document.getElementById('lc-address').value = '';
+  document.getElementById('lc-phone').value = '';
+  document.getElementById('locationModal').classList.add('open');
+}
+function editLocation(id){
+  var loc = allLocations.find(function(l){ return l._id===id; });
+  if(!loc) return;
+  document.getElementById('locationModalTitle').textContent = 'Edit Location';
+  document.getElementById('lc-id').value = id;
+  document.getElementById('lc-name').value = loc.name;
+  document.getElementById('lc-address').value = loc.address || '';
+  document.getElementById('lc-phone').value = loc.phone || '';
+  document.getElementById('locationModal').classList.add('open');
+}
+document.getElementById('saveLocationBtn').addEventListener('click', function(){
+  var id = document.getElementById('lc-id').value;
+  var name = document.getElementById('lc-name').value.trim();
+  var address = document.getElementById('lc-address').value.trim();
+  var phone = document.getElementById('lc-phone').value.trim();
+  if(!name){ toast('Location name required!','err'); return; }
+  var call = id ? api('/locations/'+id,'PUT',{ name:name, address:address, phone:phone }) : api('/locations','POST',{ name:name, address:address, phone:phone });
+  call.then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Location saved!');
+    document.getElementById('locationModal').classList.remove('open');
+    loadLocations();
+  });
+});
+function deleteLocation(id){
+  if(!confirm('Delete this location?')) return;
+  api('/locations/'+id,'DELETE').then(function(){ toast('Deleted!'); loadLocations(); });
+}
+
+// ── LEADS / CALLS ──
+var LEAD_SOURCE_LABELS = { google_ads:'Google Ads', gmb:'GMB', myoperator:'MyOperator', walkin:'Walk-in', referral:'Referral', website:'Website', other:'Other' };
+var LEAD_STATUS_LABELS = { new:'🆕 New', contacted:'📞 Contacted', converted:'✅ Converted', lost:'❌ Lost' };
+
+function loadLeadStats(){
+  api('/leads/stats').then(function(d){
+    if(!d.ok) return;
+    document.getElementById('lead-st-total').textContent = d.total;
+    document.getElementById('st-leads').textContent = d.total;
+    document.getElementById('lead-st-new').textContent = d.byStatus.new || 0;
+    document.getElementById('lead-st-converted').textContent = d.converted;
+    document.getElementById('lead-st-rate').textContent = d.convRate + '%';
+    document.getElementById('newLeadsBadge').textContent = d.byStatus.new || 0;
+    var rows = Object.keys(d.byLocation || {});
+    document.getElementById('leadLocBreakdownTb').innerHTML = rows.length ? rows.map(function(loc){
+      var v = d.byLocation[loc];
+      var rate = v.total ? Math.round((v.converted/v.total)*100) : 0;
+      return '<tr><td style="font-weight:600;">'+loc+'</td><td>'+v.total+'</td><td>'+v.converted+'</td><td>'+rate+'%</td></tr>';
+    }).join('') : '<tr class="empty"><td colspan="4">No leads yet</td></tr>';
+  });
+}
+function loadLeads(){
+  var params = new URLSearchParams();
+  var loc = document.getElementById('leadLocFilter').value; if(loc) params.set('location', loc);
+  var src = document.getElementById('leadSourceFilter').value; if(src) params.set('source', src);
+  var st = document.getElementById('leadStatusFilter').value; if(st) params.set('status', st);
+  var q = document.getElementById('leadSearch').value; if(q) params.set('search', q);
+  api('/leads?' + params.toString()).then(function(d){
+    if(!d.ok) return;
+    allLeads = d.leads || [];
+    renderLeads();
+  });
+}
+function leadStatusTag(s){
+  return '<span class="tag '+(s==='new'?'pending':s==='contacted'?'in_progress':s==='converted'?'completed':'cancelled')+'">'+(LEAD_STATUS_LABELS[s]||s)+'</span>';
+}
+function renderLeads(){
+  document.getElementById('leadsTb').innerHTML = allLeads.length ? allLeads.map(function(l){
+    return '<tr>'
+      +'<td><div style="font-weight:600;">'+l.name+'</div><div style="font-size:11px;color:var(--muted);">+'+l.phone+'</div></td>'
+      +'<td style="font-size:12px;">'+(l.location||'—')+'</td>'
+      +'<td style="font-size:12px;">'+(LEAD_SOURCE_LABELS[l.source]||l.source)+'</td>'
+      +'<td>'+leadStatusTag(l.status)+'</td>'
+      +'<td style="font-size:12px;color:var(--text-sub);">'+fmtDate(l.createdAt)+'</td>'
+      +'<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'
+        +(l.status==='new' ? '<button class="abtn ab-inv" onclick="setLeadStatus(\''+l._id+'\',\'contacted\')">Contacted</button>' : '')
+        +(l.status!=='converted'&&l.status!=='lost' ? '<button class="abtn ab-gr" onclick="convertLeadToJob(\''+l._id+'\')">Convert to Job</button>' : '')
+        +(l.status!=='lost'&&l.status!=='converted' ? '<button class="abtn ab-del" onclick="setLeadStatus(\''+l._id+'\',\'lost\')">Lost</button>' : '')
+        +'<button class="abtn ab-del" onclick="deleteLead(\''+l._id+'\')">🗑</button>'
+      +'</div></td>'
+      +'</tr>';
+  }).join('') : '<tr class="empty"><td colspan="6">No leads/calls yet — add manually or import CSV from MyOperator</td></tr>';
+}
+['leadLocFilter','leadSourceFilter','leadStatusFilter'].forEach(function(id){
+  document.getElementById(id).addEventListener('change', loadLeads);
+});
+document.getElementById('leadSearch').addEventListener('input', loadLeads);
+
+function openLeadModal(){
+  document.getElementById('lm-name').value = '';
+  document.getElementById('lm-phone').value = '';
+  document.getElementById('lm-location').value = '';
+  document.getElementById('lm-source').value = 'walkin';
+  document.getElementById('lm-notes').value = '';
+  document.getElementById('leadModal').classList.add('open');
+}
+document.getElementById('saveLeadBtn').addEventListener('click', function(){
+  var name = document.getElementById('lm-name').value.trim();
+  var phone = document.getElementById('lm-phone').value.trim();
+  var location = document.getElementById('lm-location').value;
+  var source = document.getElementById('lm-source').value;
+  var notes = document.getElementById('lm-notes').value.trim();
+  if(!name || !phone){ toast('Name and phone required!','err'); return; }
+  api('/leads','POST',{ name:name, phone:phone, location:location, source:source, notes:notes }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Lead added!');
+    document.getElementById('leadModal').classList.remove('open');
+    loadLeads(); loadLeadStats();
+  });
+});
+function setLeadStatus(id, status){
+  api('/leads/'+id,'PUT',{ status: status }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Lead updated!');
+    loadLeads(); loadLeadStats();
+  });
+}
+function deleteLead(id){
+  if(!confirm('Delete this lead?')) return;
+  api('/leads/'+id,'DELETE').then(function(){ toast('Deleted!'); loadLeads(); loadLeadStats(); });
+}
+function convertLeadToJob(id){
+  var lead = allLeads.find(function(l){ return l._id===id; });
+  if(!lead) return;
+  convertingLeadId = id;
+  document.getElementById('nj-cname').value = lead.name;
+  document.getElementById('nj-cphone').value = lead.phone;
+  if (lead.location) document.getElementById('nj-location').value = lead.location;
+  toast('Lead loaded — fill service details and create job');
+  showSection('sec-new-job');
+}
+
+// ── CSV IMPORT ──
+var CSV_FIELDS = [
+  { key:'name', label:'Name *', guess:['name','caller','customer'] },
+  { key:'phone', label:'Phone *', guess:['phone','number','caller number','mobile'] },
+  { key:'location', label:'Location', guess:['location','branch','shop'] },
+  { key:'source', label:'Source', guess:['source','campaign'] },
+  { key:'notes', label:'Notes', guess:['notes','remark','description'] },
+  { key:'createdAt', label:'Date/Time', guess:['date','time','created'] }
+];
+function openCsvImport(){
+  csvHeaders = []; csvRows = [];
+  document.getElementById('csvFileInput').value = '';
+  document.getElementById('csvMappingWrap').classList.add('hidden');
+  document.getElementById('csvImportBtn').classList.add('hidden');
+  document.getElementById('csvImportModal').classList.add('open');
+}
+document.getElementById('csvFileInput').addEventListener('change', function(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){ parseCsv(ev.target.result); };
+  reader.readAsText(file);
+});
+function parseCsvLine(line){
+  var result = [], cur = '', inQuotes = false;
+  for (var i=0;i<line.length;i++){
+    var c = line[i];
+    if (c === '"') { inQuotes = !inQuotes; }
+    else if (c === ',' && !inQuotes) { result.push(cur); cur=''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result.map(function(s){ return s.trim().replace(/^"|"$/g,''); });
+}
+function parseCsv(text){
+  var lines = text.split(/\r?\n/).filter(function(l){ return l.trim().length; });
+  if(!lines.length){ toast('Empty file!','err'); return; }
+  csvHeaders = parseCsvLine(lines[0]);
+  csvRows = lines.slice(1).map(parseCsvLine);
+  renderCsvMapping();
+}
+function guessColumn(guesses){
+  for (var i=0;i<csvHeaders.length;i++){
+    var h = csvHeaders[i].toLowerCase();
+    if (guesses.some(function(g){ return h.indexOf(g) !== -1; })) return i;
+  }
+  return -1;
+}
+function renderCsvMapping(){
+  document.getElementById('csvMappingWrap').classList.remove('hidden');
+  document.getElementById('csvMappingGrid').innerHTML = CSV_FIELDS.map(function(f){
+    var guess = guessColumn(f.guess);
+    var opts = csvHeaders.map(function(h, idx){ return '<option value="'+idx+'" '+(idx===guess?'selected':'')+'>'+h+'</option>'; }).join('');
+    return '<div class="mf"><label>'+f.label+'</label><select id="csvmap-'+f.key+'" onchange="renderCsvPreview()"><option value="">— Skip —</option>'+opts+'</select></div>';
+  }).join('');
+  renderCsvPreview();
+  document.getElementById('csvImportBtn').classList.remove('hidden');
+}
+function getMappedRows(){
+  var mapping = {};
+  CSV_FIELDS.forEach(function(f){
+    var v = document.getElementById('csvmap-'+f.key).value;
+    mapping[f.key] = v === '' ? -1 : parseInt(v);
+  });
+  return csvRows.map(function(row){
+    var obj = {};
+    CSV_FIELDS.forEach(function(f){ obj[f.key] = mapping[f.key] >= 0 ? (row[mapping[f.key]] || '') : ''; });
+    return obj;
+  }).filter(function(r){ return r.name && r.phone; });
+}
+function renderCsvPreview(){
+  var mapped = getMappedRows();
+  document.getElementById('csvPreviewHead').innerHTML = '<tr>' + CSV_FIELDS.map(function(f){ return '<th>'+f.label+'</th>'; }).join('') + '</tr>';
+  document.getElementById('csvPreviewBody').innerHTML = mapped.slice(0,5).map(function(r){
+    return '<tr>' + CSV_FIELDS.map(function(f){ return '<td>'+(r[f.key]||'—')+'</td>'; }).join('') + '</tr>';
+  }).join('');
+  document.getElementById('csvSummary').textContent = mapped.length + ' valid rows found (out of ' + csvRows.length + ' total). Rows missing Name or Phone are skipped.';
+}
+document.getElementById('csvImportBtn').addEventListener('click', function(){
+  var rows = getMappedRows();
+  if(!rows.length){ toast('No valid rows to import!','err'); return; }
+  var btn = this; btn.textContent = 'Importing...'; btn.disabled = true;
+  api('/leads/import','POST',{ rows: rows }).then(function(d){
+    btn.textContent = 'Import Leads'; btn.disabled = false;
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast(d.imported + ' leads imported!');
+    document.getElementById('csvImportModal').classList.remove('open');
+    loadLeads(); loadLeadStats();
+  });
+});
+</script>
+</body>
+</html>
