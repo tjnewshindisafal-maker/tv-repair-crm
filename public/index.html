@@ -181,6 +181,7 @@ tbody tr:hover{background:var(--surface-2);}
       <button class="sb-btn" data-sec="sec-new-job"><span class="sb-ico">➕</span>New Job</button>
       <button class="sb-btn" data-sec="sec-technicians"><span class="sb-ico">👤</span>Technicians</button>
       <button class="sb-btn" data-sec="sec-customers"><span class="sb-ico">👥</span>Customers</button>
+      <button class="sb-btn" data-sec="sec-inventory"><span class="sb-ico">📦</span>Inventory <span class="sb-badge" id="lowStockBadge">0</span></button>
       <button class="sb-btn" data-sec="sec-locations"><span class="sb-ico">📍</span>Locations</button>
     </div>
 
@@ -209,6 +210,14 @@ tbody tr:hover{background:var(--surface-2);}
           <div class="stat-card sc-yellow"><div class="stat-ico">🆕</div><div><div class="stat-val" id="lead-st-new">0</div><div class="stat-lbl">New (Not Contacted)</div></div></div>
           <div class="stat-card sc-green"><div class="stat-ico">✅</div><div><div class="stat-val" id="lead-st-converted">0</div><div class="stat-lbl">Converted to Job</div></div></div>
           <div class="stat-card sc-acc"><div class="stat-ico">📈</div><div><div class="stat-val" id="lead-st-rate">0%</div><div class="stat-lbl">Conversion Rate</div></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">🔌 Connect MyOperator (auto call tracking)</div></div>
+          <p style="font-size:12px;color:var(--text-sub);margin-bottom:10px;">Paste this URL into MyOperator's webhook/callback settings — every call will automatically appear here as a new lead, no manual CSV import needed. Field names differ by MyOperator plan; if calls don't map correctly, tell us what MyOperator actually sends and we'll adjust.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input class="search-in" id="webhookUrlBox" readonly style="flex:1;min-width:280px;font-family:monospace;font-size:12px;" value="Loading...">
+            <button class="abtn ab-pri" id="copyWebhookBtn">📋 Copy</button>
+          </div>
         </div>
         <div class="panel">
           <div class="panel-head"><div class="panel-title">📍 Location-wise Breakdown</div></div>
@@ -315,6 +324,30 @@ tbody tr:hover{background:var(--surface-2);}
         <div class="panel">
           <div class="panel-head"><div class="panel-title">📍 Locations / Branches</div><button class="abtn ab-pri" onclick="openLocationModal()">+ Add Location</button></div>
           <div class="table-scroll"><table><thead><tr><th>Name</th><th>Address</th><th>Phone</th><th>Action</th></tr></thead><tbody id="locationsTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- INVENTORY -->
+      <div class="section" id="sec-inventory">
+        <div class="stats-grid">
+          <div class="stat-card sc-blue"><div class="stat-ico">📦</div><div><div class="stat-val" id="inv-st-items">0</div><div class="stat-lbl">Total Items</div></div></div>
+          <div class="stat-card sc-yellow"><div class="stat-ico">⚠️</div><div><div class="stat-val" id="inv-st-low">0</div><div class="stat-lbl">Low Stock Alerts</div></div></div>
+          <div class="stat-card sc-green"><div class="stat-ico">💰</div><div><div class="stat-val" id="inv-st-value">₹0</div><div class="stat-lbl">Total Stock Value (cost)</div></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">📦 Inventory (location-wise stock)</div>
+            <div class="panel-acts">
+              <select class="filter-sel" id="invLocFilter"><option value="">All Locations</option></select>
+              <button class="abtn ab-pri" onclick="openItemModal()">+ Add Item</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Item</th><th>SKU</th><th>Location</th><th>Quantity</th><th>Cost</th><th>Sell</th><th>Actions</th></tr></thead>
+              <tbody id="inventoryTb"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -431,6 +464,61 @@ tbody tr:hover{background:var(--surface-2);}
   </div>
 </div>
 
+<!-- INVENTORY ITEM MODAL -->
+<div class="overlay" id="itemModal">
+  <div class="modal">
+    <h3 id="itemModalTitle">Add Item</h3>
+    <input type="hidden" id="im-id">
+    <div class="m-grid">
+      <div class="mf"><label>Item Name *</label><input type="text" id="im-name" placeholder="e.g. TV Panel 43 inch"></div>
+      <div class="mf"><label>SKU / Code</label><input type="text" id="im-sku" placeholder="Optional"></div>
+    </div>
+    <div class="m-grid">
+      <div class="mf"><label>Unit</label><input type="text" id="im-unit" placeholder="pcs" value="pcs"></div>
+      <div class="mf"><label>Low Stock Alert Below</label><input type="number" id="im-threshold" placeholder="5" value="5"></div>
+    </div>
+    <div class="m-grid">
+      <div class="mf"><label>Cost Price (₹)</label><input type="number" id="im-cost" placeholder="0"></div>
+      <div class="mf"><label>Sell Price (₹)</label><input type="number" id="im-sell" placeholder="0"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-save" id="saveItemBtn">Save Item</button>
+      <button class="btn-cancel" onclick="document.getElementById('itemModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESTOCK MODAL -->
+<div class="overlay" id="restockModal">
+  <div class="modal">
+    <h3>📥 Restock Item</h3>
+    <input type="hidden" id="rs-itemId">
+    <div class="mf"><label>Location *</label><select id="rs-location"></select></div>
+    <div class="mf"><label>Quantity to Add *</label><input type="number" id="rs-qty" placeholder="e.g. 10"></div>
+    <div class="mf"><label>Note</label><input type="text" id="rs-note" placeholder="e.g. New purchase from supplier"></div>
+    <div class="modal-btns">
+      <button class="btn-save" id="saveRestockBtn">Add Stock</button>
+      <button class="btn-cancel" onclick="document.getElementById('restockModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- USE STOCK MODAL -->
+<div class="overlay" id="useModal">
+  <div class="modal">
+    <h3>📤 Use Stock (repair job)</h3>
+    <input type="hidden" id="us-itemId">
+    <div class="mf"><label>Location *</label><select id="us-location"></select></div>
+    <div class="mf"><label>Quantity Used *</label><input type="number" id="us-qty" placeholder="e.g. 1"></div>
+    <div class="mf"><label>Job (optional)</label><select id="us-jobId"><option value="">Not linked to a job</option></select></div>
+    <div class="mf"><label>Note</label><input type="text" id="us-note" placeholder="e.g. Used in repair"></div>
+    <div class="modal-btns">
+      <button class="btn-save" id="saveUseBtn">Deduct Stock</button>
+      <button class="btn-cancel" onclick="document.getElementById('useModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="toasts"></div>
 
 <script>
@@ -505,7 +593,22 @@ function startApp(name, business){
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('navBiz').textContent = business || name;
   loadAll();
+  api('/me').then(function(d){
+    if(!d.ok) return;
+    var url = window.location.origin + '/api/webhooks/myoperator?token=' + d.user.webhookToken;
+    document.getElementById('webhookUrlBox').value = url;
+  });
 }
+document.getElementById('copyWebhookBtn').addEventListener('click', function(){
+  var box = document.getElementById('webhookUrlBox');
+  box.select();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(box.value).then(function(){ toast('Webhook URL copied!'); });
+  } else {
+    document.execCommand('copy');
+    toast('Webhook URL copied!');
+  }
+});
 
 // Auto-login if token exists
 if (token) {
@@ -531,7 +634,7 @@ document.querySelectorAll('.overlay').forEach(function(o){
   o.addEventListener('click', function(e){ if(e.target === o) o.classList.remove('open'); });
 });
 
-function loadAll(){ loadJobs(); loadTechs(); loadCustomers(); loadLocations(); loadLeadStats(); loadLeads(); }
+function loadAll(){ loadJobs(); loadTechs(); loadCustomers(); loadLocations(); loadLeadStats(); loadLeads(); loadInventory(); }
 
 // ── JOBS ──
 function loadJobs(){
@@ -698,6 +801,9 @@ function loadLocations(){
     document.getElementById('nj-location').innerHTML = '<option value="">— Not specified —</option>' + opts;
     document.getElementById('lm-location').innerHTML = '<option value="">— Select —</option>' + opts;
     document.getElementById('leadLocFilter').innerHTML = '<option value="">All Locations</option>' + opts;
+    document.getElementById('invLocFilter').innerHTML = '<option value="">All Locations</option>' + opts;
+    document.getElementById('rs-location').innerHTML = opts || '<option value="">Add a location first</option>';
+    document.getElementById('us-location').innerHTML = opts || '<option value="">Add a location first</option>';
     renderLocationsTable();
   });
 }
@@ -934,6 +1040,152 @@ document.getElementById('csvImportBtn').addEventListener('click', function(){
     toast(d.imported + ' leads imported!');
     document.getElementById('csvImportModal').classList.remove('open');
     loadLeads(); loadLeadStats();
+  });
+});
+
+// ── INVENTORY (location-wise stock) ──
+var allInventory = [];
+
+function loadInventory(){
+  var loc = document.getElementById('invLocFilter').value;
+  api('/inventory' + (loc ? '?location=' + encodeURIComponent(loc) : '')).then(function(d){
+    if(!d.ok) return;
+    allInventory = d.items || [];
+    renderInventory();
+  });
+}
+document.getElementById('invLocFilter').addEventListener('change', loadInventory);
+
+function renderInventory(){
+  var loc = document.getElementById('invLocFilter').value;
+  var totalItems = allInventory.length;
+  var lowCount = 0;
+  var totalValue = 0;
+  var rows = [];
+
+  allInventory.forEach(function(item){
+    var stocks = item.stock && item.stock.length ? item.stock : [{ location: '—', quantity: 0 }];
+    var filtered = loc ? stocks.filter(function(s){ return s.location === loc; }) : stocks;
+    if (!filtered.length && loc) return;
+    filtered.forEach(function(s){
+      var low = s.quantity <= (item.lowStockThreshold || 0);
+      if (low) lowCount++;
+      totalValue += s.quantity * (item.costPrice || 0);
+      rows.push('<tr>'
+        +'<td style="font-weight:600;">'+item.name+'</td>'
+        +'<td style="font-size:12px;color:var(--text-sub);">'+(item.sku||'—')+'</td>'
+        +'<td style="font-size:12px;">'+s.location+'</td>'
+        +'<td style="font-weight:700;'+(low?'color:var(--red);':'')+'">'+s.quantity+' '+item.unit+(low?' ⚠️':'')+'</td>'
+        +'<td>₹'+item.costPrice+'</td>'
+        +'<td>₹'+item.sellPrice+'</td>'
+        +'<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'
+          +'<button class="abtn ab-gr" onclick="openRestockModal(\''+item._id+'\')">📥 Restock</button>'
+          +'<button class="abtn ab-inv" onclick="openUseModal(\''+item._id+'\')">📤 Use</button>'
+          +'<button class="abtn ab-pri" onclick="editItem(\''+item._id+'\')">Edit</button>'
+          +'<button class="abtn ab-del" onclick="deleteItem(\''+item._id+'\')">Delete</button>'
+        +'</div></td>'
+        +'</tr>');
+    });
+  });
+
+  document.getElementById('inv-st-items').textContent = totalItems;
+  document.getElementById('inv-st-low').textContent = lowCount;
+  document.getElementById('inv-st-value').textContent = '₹' + totalValue.toLocaleString('en-IN');
+  document.getElementById('lowStockBadge').textContent = lowCount;
+  document.getElementById('inventoryTb').innerHTML = rows.length ? rows.join('') : '<tr class="empty"><td colspan="7">No inventory items yet — add spare parts/stock here</td></tr>';
+}
+
+function openItemModal(){
+  document.getElementById('itemModalTitle').textContent = 'Add Item';
+  document.getElementById('im-id').value = '';
+  document.getElementById('im-name').value = '';
+  document.getElementById('im-sku').value = '';
+  document.getElementById('im-unit').value = 'pcs';
+  document.getElementById('im-threshold').value = '5';
+  document.getElementById('im-cost').value = '';
+  document.getElementById('im-sell').value = '';
+  document.getElementById('itemModal').classList.add('open');
+}
+function editItem(id){
+  var item = allInventory.find(function(i){ return i._id === id; });
+  if(!item) return;
+  document.getElementById('itemModalTitle').textContent = 'Edit Item';
+  document.getElementById('im-id').value = id;
+  document.getElementById('im-name').value = item.name;
+  document.getElementById('im-sku').value = item.sku || '';
+  document.getElementById('im-unit').value = item.unit || 'pcs';
+  document.getElementById('im-threshold').value = item.lowStockThreshold || 5;
+  document.getElementById('im-cost').value = item.costPrice || '';
+  document.getElementById('im-sell').value = item.sellPrice || '';
+  document.getElementById('itemModal').classList.add('open');
+}
+document.getElementById('saveItemBtn').addEventListener('click', function(){
+  var id = document.getElementById('im-id').value;
+  var payload = {
+    name: document.getElementById('im-name').value.trim(),
+    sku: document.getElementById('im-sku').value.trim(),
+    unit: document.getElementById('im-unit').value.trim() || 'pcs',
+    lowStockThreshold: document.getElementById('im-threshold').value,
+    costPrice: document.getElementById('im-cost').value,
+    sellPrice: document.getElementById('im-sell').value
+  };
+  if(!payload.name){ toast('Item name required!','err'); return; }
+  var call = id ? api('/inventory/'+id,'PUT',payload) : api('/inventory','POST',payload);
+  call.then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Item saved!');
+    document.getElementById('itemModal').classList.remove('open');
+    loadInventory();
+  });
+});
+function deleteItem(id){
+  if(!confirm('Delete this item and all its stock records?')) return;
+  api('/inventory/'+id,'DELETE').then(function(){ toast('Deleted!'); loadInventory(); });
+}
+
+function openRestockModal(itemId){
+  document.getElementById('rs-itemId').value = itemId;
+  document.getElementById('rs-qty').value = '';
+  document.getElementById('rs-note').value = '';
+  document.getElementById('restockModal').classList.add('open');
+}
+document.getElementById('saveRestockBtn').addEventListener('click', function(){
+  var itemId = document.getElementById('rs-itemId').value;
+  var location = document.getElementById('rs-location').value;
+  var quantity = document.getElementById('rs-qty').value;
+  var note = document.getElementById('rs-note').value.trim();
+  if(!location){ toast('Add a location first!','err'); return; }
+  if(!quantity || quantity <= 0){ toast('Enter a valid quantity!','err'); return; }
+  api('/inventory/'+itemId+'/restock','POST',{ location: location, quantity: quantity, note: note }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Stock added!');
+    document.getElementById('restockModal').classList.remove('open');
+    loadInventory();
+  });
+});
+
+function openUseModal(itemId){
+  document.getElementById('us-itemId').value = itemId;
+  document.getElementById('us-qty').value = '';
+  document.getElementById('us-note').value = '';
+  document.getElementById('us-jobId').innerHTML = '<option value="">Not linked to a job</option>' + allJobs.map(function(j){
+    return '<option value="'+j.jobId+'">'+j.jobId+' — '+j.customerName+'</option>';
+  }).join('');
+  document.getElementById('useModal').classList.add('open');
+}
+document.getElementById('saveUseBtn').addEventListener('click', function(){
+  var itemId = document.getElementById('us-itemId').value;
+  var location = document.getElementById('us-location').value;
+  var quantity = document.getElementById('us-qty').value;
+  var jobId = document.getElementById('us-jobId').value;
+  var note = document.getElementById('us-note').value.trim();
+  if(!location){ toast('Add a location first!','err'); return; }
+  if(!quantity || quantity <= 0){ toast('Enter a valid quantity!','err'); return; }
+  api('/inventory/'+itemId+'/use','POST',{ location: location, quantity: quantity, jobId: jobId, note: note }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Stock deducted!');
+    document.getElementById('useModal').classList.remove('open');
+    loadInventory();
   });
 });
 </script>

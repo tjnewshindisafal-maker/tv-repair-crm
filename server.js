@@ -3,6 +3,7 @@ require('dotenv').config();
 const express   = require('express');
 const cors      = require('cors');
 const path      = require('path');
+const crypto    = require('crypto');
 const bcrypt    = require('bcryptjs');
 const jwt       = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
@@ -50,6 +51,10 @@ async function connectDB() {
   try { await db.collection('jobs').createIndex({ userId: 1 }); } catch (e) {}
   try { await db.collection('jobs').createIndex({ jobId: 1 }); } catch (e) {}
   try { await db.collection('technicians').createIndex({ userId: 1 }); } catch (e) {}
+  try { await db.collection('inventory_items').createIndex({ userId: 1 }); } catch (e) {}
+  try { await db.collection('inventory_stock').createIndex({ userId: 1, itemId: 1, location: 1 }, { unique: true }); } catch (e) {}
+  try { await db.collection('inventory_logs').createIndex({ userId: 1 }); } catch (e) {}
+  try { await db.collection('users').createIndex({ webhookToken: 1 }); } catch (e) {}
 }
 
 // ── EXPRESS SETUP ────────────────────────────────────────────────────────────
@@ -105,6 +110,7 @@ app.post('/api/signup', signupLimiter, async (req, res) => {
     const hashedPass = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const result = await db.collection('users').insertOne({
       name, email, pass: hashedPass, business: business || name,
+      webhookToken: crypto.randomBytes(16).toString('hex'),
       createdAt: new Date()
     });
     const token = createToken(result.insertedId.toString());
@@ -131,7 +137,12 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 });
 
 app.get('/api/me', auth, async (req, res) => {
-  res.json({ ok: true, user: { id: req.user._id, name: req.user.name, email: req.user.email, business: req.user.business } });
+  let webhookToken = req.user.webhookToken;
+  if (!webhookToken) {
+    webhookToken = crypto.randomBytes(16).toString('hex');
+    await db.collection('users').updateOne({ _id: req.user._id }, { $set: { webhookToken } });
+  }
+  res.json({ ok: true, user: { id: req.user._id, name: req.user.name, email: req.user.email, business: req.user.business, webhookToken } });
 });
 
 // ── LOCATIONS ────────────────────────────────────────────────────────────────
@@ -280,6 +291,154 @@ app.put('/api/leads/:id/link-job', auth, async (req, res) => {
     if (!jobId) return res.json({ ok: false, msg: 'jobId required' });
     await db.collection('leads').updateOne({ _id: new ObjectId(req.params.id), userId: req.userId }, { $set: { status: 'converted', jobId, updatedAt: new Date() } });
     res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+// ── MYOPERATOR WEBHOOK (public — no auth, secured by per-account token) ──────
+// Point MyOperator's call-log webhook at: POST /api/webhooks/myoperator?token=<webhookToken>
+// Field names vary by MyOperator plan/integration, so common variants are tried.
+app.post('/api/webhooks/myoperator', async (req, res) => {
+  try {
+    const token = sanitize(req.query.token, 64);
+    if (!token) return res.status(400).json({ ok: false, msg: 'Missing token' });
+    const user = await db.collection('users').findOne({ webhookToken: token });
+    if (!user) return res.status(404).json({ ok: false, msg: 'Invalid token' });
+
+    const b = req.body || {};
+    const name = sanitize(b.caller_name || b.customer_name || b.name || 'Unknown Caller', 100);
+    const rawPhone = b.caller_number || b.customer_number || b.from || b.phone || b.caller_id || '';
+    const phone = sanitize(String(rawPhone).replace(/\D/g, '').slice(-10), 15);
+    if (!phone) return res.status(400).json({ ok: false, msg: 'No phone number found in payload' });
+
+    const destNumber = String(b.company_number || b.did_number || b.destination || b.to || '').replace(/\D/g, '');
+    let location = '';
+    if (destNumber) {
+      const loc = await db.collection('locations').findOne({ userId: user._id.toString(), phone: { $regex: destNumber.slice(-10) + '$' } });
+      if (loc) location = loc.name;
+    }
+
+    const duration = parseInt(b.call_duration || b.duration || 0) || 0;
+    const callType = sanitize(b.call_type || b.direction || b.status || '', 50);
+    const recording = sanitize(b.recording_url || b.recording || '', 500);
+    let notes = 'MyOperator call';
+    if (callType) notes += ' — ' + callType;
+    if (duration) notes += ', duration: ' + duration + 's';
+    if (recording) notes += '\nRecording: ' + recording;
+
+    await db.collection('leads').insertOne({
+      userId: user._id.toString(), name: name || 'Unknown Caller', phone, location, source: 'myoperator',
+      status: 'new', notes, jobId: null, createdAt: new Date(), updatedAt: new Date()
+    });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, msg: e.message }); }
+});
+
+// ── INVENTORY (location-wise stock) ──────────────────────────────────────────
+app.get('/api/inventory', auth, async (req, res) => {
+  try {
+    const location = sanitize(req.query.location, 100);
+    const items = await db.collection('inventory_items').find({ userId: req.userId }).sort({ name: 1 }).toArray();
+    const stockQuery = { userId: req.userId };
+    if (location) stockQuery.location = location;
+    const stocks = await db.collection('inventory_stock').find(stockQuery).toArray();
+    const result = items.map(item => {
+      const itemStocks = stocks.filter(s => s.itemId === item._id.toString());
+      return {
+        ...item,
+        stock: itemStocks.map(s => ({ location: s.location, quantity: s.quantity })),
+        totalQuantity: itemStocks.reduce((a, s) => a + s.quantity, 0)
+      };
+    });
+    res.json({ ok: true, items: result });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.post('/api/inventory', auth, async (req, res) => {
+  try {
+    const name = sanitize(req.body.name, 150);
+    const sku = sanitize(req.body.sku, 50);
+    const unit = sanitize(req.body.unit, 20) || 'pcs';
+    const costPrice = Math.max(0, parseFloat(req.body.costPrice) || 0);
+    const sellPrice = Math.max(0, parseFloat(req.body.sellPrice) || 0);
+    const lowStockThreshold = Math.max(0, parseInt(req.body.lowStockThreshold) || 5);
+    if (!name) return res.json({ ok: false, msg: 'Item name required' });
+    const doc = { userId: req.userId, name, sku, unit, costPrice, sellPrice, lowStockThreshold, createdAt: new Date() };
+    const r = await db.collection('inventory_items').insertOne(doc);
+    res.json({ ok: true, item: { ...doc, _id: r.insertedId } });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.put('/api/inventory/:id', auth, async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) return res.json({ ok: false, msg: 'Invalid ID' });
+    const updates = {};
+    if (req.body.name !== undefined) updates.name = sanitize(req.body.name, 150);
+    if (req.body.sku !== undefined) updates.sku = sanitize(req.body.sku, 50);
+    if (req.body.unit !== undefined) updates.unit = sanitize(req.body.unit, 20);
+    if (req.body.costPrice !== undefined) updates.costPrice = Math.max(0, parseFloat(req.body.costPrice) || 0);
+    if (req.body.sellPrice !== undefined) updates.sellPrice = Math.max(0, parseFloat(req.body.sellPrice) || 0);
+    if (req.body.lowStockThreshold !== undefined) updates.lowStockThreshold = Math.max(0, parseInt(req.body.lowStockThreshold) || 0);
+    await db.collection('inventory_items').updateOne({ _id: new ObjectId(req.params.id), userId: req.userId }, { $set: updates });
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.delete('/api/inventory/:id', auth, async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) return res.json({ ok: false, msg: 'Invalid ID' });
+    await db.collection('inventory_items').deleteOne({ _id: new ObjectId(req.params.id), userId: req.userId });
+    await db.collection('inventory_stock').deleteMany({ userId: req.userId, itemId: req.params.id });
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.post('/api/inventory/:id/restock', auth, async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) return res.json({ ok: false, msg: 'Invalid ID' });
+    const location = sanitize(req.body.location, 100);
+    const quantity = parseInt(req.body.quantity);
+    const note = sanitize(req.body.note, 300);
+    if (!location) return res.json({ ok: false, msg: 'Location required' });
+    if (!quantity || quantity <= 0) return res.json({ ok: false, msg: 'Valid quantity required' });
+    const item = await db.collection('inventory_items').findOne({ _id: new ObjectId(req.params.id), userId: req.userId });
+    if (!item) return res.json({ ok: false, msg: 'Item not found' });
+    await db.collection('inventory_stock').updateOne(
+      { userId: req.userId, itemId: req.params.id, location },
+      { $inc: { quantity }, $set: { updatedAt: new Date() } },
+      { upsert: true }
+    );
+    await db.collection('inventory_logs').insertOne({ userId: req.userId, itemId: req.params.id, itemName: item.name, location, type: 'restock', quantity, note, createdAt: new Date() });
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.post('/api/inventory/:id/use', auth, async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) return res.json({ ok: false, msg: 'Invalid ID' });
+    const location = sanitize(req.body.location, 100);
+    const quantity = parseInt(req.body.quantity);
+    const jobId = sanitize(req.body.jobId, 30);
+    const note = sanitize(req.body.note, 300);
+    if (!location) return res.json({ ok: false, msg: 'Location required' });
+    if (!quantity || quantity <= 0) return res.json({ ok: false, msg: 'Valid quantity required' });
+    const item = await db.collection('inventory_items').findOne({ _id: new ObjectId(req.params.id), userId: req.userId });
+    if (!item) return res.json({ ok: false, msg: 'Item not found' });
+    const stock = await db.collection('inventory_stock').findOne({ userId: req.userId, itemId: req.params.id, location });
+    const current = stock ? stock.quantity : 0;
+    if (current < quantity) return res.json({ ok: false, msg: 'Not enough stock at this location (available: ' + current + ')' });
+    await db.collection('inventory_stock').updateOne(
+      { userId: req.userId, itemId: req.params.id, location },
+      { $inc: { quantity: -quantity }, $set: { updatedAt: new Date() } }
+    );
+    await db.collection('inventory_logs').insertOne({ userId: req.userId, itemId: req.params.id, itemName: item.name, location, type: 'used', quantity: -quantity, jobId: jobId || null, note, createdAt: new Date() });
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.get('/api/inventory/logs', auth, async (req, res) => {
+  try {
+    const logs = await db.collection('inventory_logs').find({ userId: req.userId }).sort({ createdAt: -1 }).limit(100).toArray();
+    res.json({ ok: true, logs });
   } catch (e) { res.json({ ok: false, msg: e.message }); }
 });
 
