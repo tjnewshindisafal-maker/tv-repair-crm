@@ -55,13 +55,16 @@ async function connectDB() {
   try { await db.collection('inventory_stock').createIndex({ userId: 1, itemId: 1, location: 1 }, { unique: true }); } catch (e) {}
   try { await db.collection('inventory_logs').createIndex({ userId: 1 }); } catch (e) {}
   try { await db.collection('users').createIndex({ webhookToken: 1 }); } catch (e) {}
+  try { await db.collection('users').createIndex({ ownerId: 1 }); } catch (e) {}
+  try { await db.collection('suppliers').createIndex({ userId: 1 }); } catch (e) {}
+  try { await db.collection('purchase_orders').createIndex({ userId: 1 }); } catch (e) {}
 }
 
 // ── EXPRESS SETUP ────────────────────────────────────────────────────────────
 const app = express();
 app.set('trust proxy', 1);
 app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -87,9 +90,35 @@ async function auth(req, res, next) {
   if (!decoded) return res.json({ ok: false, msg: 'Invalid or expired token' });
   const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.uid) });
   if (!user) return res.json({ ok: false, msg: 'Unauthorized' });
+  if (user.status === 'blocked') return res.json({ ok: false, msg: 'Account disabled. Contact your business admin.' });
   req.user = user;
-  req.userId = user._id.toString();
+  req.actorId = user._id.toString();
+  req.role = user.role || 'owner';
+  // Business data scope: staff operate under their owner's data, not their own account id.
+  req.userId = req.role === 'staff' ? (user.ownerId || user._id.toString()) : user._id.toString();
   next();
+}
+
+// Admin-level = business owner, or a staff account with staffRole 'admin'.
+function isAdminLevel(req) {
+  return req.role === 'owner' || (req.role === 'staff' && req.user.staffRole === 'admin');
+}
+function requireAdmin(req, res, next) {
+  if (!isAdminLevel(req)) return res.json({ ok: false, msg: 'Admin access required.' });
+  next();
+}
+// Restricts a location-scoped query to a staff member's assigned locations, if any are set.
+function applyLocationScope(req, query, requestedLocation) {
+  const access = (req.role === 'staff' && Array.isArray(req.user.locationAccess)) ? req.user.locationAccess : [];
+  if (!access.length) {
+    if (requestedLocation) query.location = requestedLocation;
+    return;
+  }
+  if (requestedLocation) {
+    query.location = access.indexOf(requestedLocation) !== -1 ? requestedLocation : '__none__';
+  } else {
+    query.location = { $in: access };
+  }
 }
 
 // ── AUTH ROUTES ──────────────────────────────────────────────────────────────
@@ -110,6 +139,7 @@ app.post('/api/signup', signupLimiter, async (req, res) => {
     const hashedPass = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const result = await db.collection('users').insertOne({
       name, email, pass: hashedPass, business: business || name,
+      role: 'owner', status: 'active',
       webhookToken: crypto.randomBytes(16).toString('hex'),
       createdAt: new Date()
     });
@@ -130,6 +160,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 
     const match = await bcrypt.compare(password, user.pass);
     if (!match) return res.json({ ok: false, msg: 'Wrong email or password' });
+    if (user.status === 'blocked') return res.json({ ok: false, msg: 'Account disabled. Contact your business admin.' });
 
     const token = createToken(user._id.toString());
     res.json({ ok: true, token, name: user.name, business: user.business });
@@ -138,11 +169,88 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 
 app.get('/api/me', auth, async (req, res) => {
   let webhookToken = req.user.webhookToken;
-  if (!webhookToken) {
+  if (!webhookToken && req.role === 'owner') {
     webhookToken = crypto.randomBytes(16).toString('hex');
     await db.collection('users').updateOne({ _id: req.user._id }, { $set: { webhookToken } });
   }
-  res.json({ ok: true, user: { id: req.user._id, name: req.user.name, email: req.user.email, business: req.user.business, webhookToken } });
+  let business = req.user.business;
+  if (req.role === 'staff') {
+    const owner = await db.collection('users').findOne({ _id: new ObjectId(req.userId) });
+    business = owner ? owner.business : business;
+    webhookToken = owner ? owner.webhookToken : null;
+  }
+  res.json({ ok: true, user: {
+    id: req.user._id, name: req.user.name, email: req.user.email, business, webhookToken,
+    role: req.role, staffRole: req.user.staffRole || null, locationAccess: req.user.locationAccess || [],
+    isAdmin: isAdminLevel(req)
+  } });
+});
+
+// ── ADMIN: STAFF MANAGEMENT (owner only — staff cannot create other staff) ──
+const STAFF_ROLES = ['admin', 'staff', 'technician'];
+
+app.get('/api/staff', auth, async (req, res) => {
+  if (req.role !== 'owner') return res.json({ ok: false, msg: 'Owner access required.' });
+  const staff = await db.collection('users').find({ ownerId: req.userId }).project({ pass: 0 }).toArray();
+  res.json({ ok: true, staff });
+});
+
+app.post('/api/staff', auth, async (req, res) => {
+  try {
+    if (req.role !== 'owner') return res.json({ ok: false, msg: 'Owner access required.' });
+    let { name, email, password, staffRole, locationAccess, technicianId } = req.body;
+    name = sanitize(name, 100);
+    email = sanitize(email, 150).toLowerCase();
+    staffRole = STAFF_ROLES.indexOf(staffRole) !== -1 ? staffRole : 'staff';
+    locationAccess = Array.isArray(locationAccess) ? locationAccess.map(l => sanitize(l, 100)).filter(Boolean) : [];
+    technicianId = sanitize(technicianId, 30) || null;
+
+    if (!name || name.length < 2) return res.json({ ok: false, msg: 'Name required' });
+    if (!validator.isEmail(email)) return res.json({ ok: false, msg: 'Invalid email' });
+    if (!password || password.length < 6) return res.json({ ok: false, msg: 'Password must be at least 6 characters' });
+
+    const existing = await db.collection('users').findOne({ email });
+    if (existing) return res.json({ ok: false, msg: 'Email already registered' });
+
+    const hashedPass = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const doc = {
+      name, email, pass: hashedPass, role: 'staff', ownerId: req.userId,
+      staffRole, locationAccess, technicianId, status: 'active', createdAt: new Date()
+    };
+    const r = await db.collection('users').insertOne(doc);
+    delete doc.pass;
+    res.json({ ok: true, staffMember: { ...doc, _id: r.insertedId } });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.put('/api/staff/:id', auth, async (req, res) => {
+  try {
+    if (req.role !== 'owner') return res.json({ ok: false, msg: 'Owner access required.' });
+    if (!ObjectId.isValid(req.params.id)) return res.json({ ok: false, msg: 'Invalid ID' });
+    const updates = {};
+    if (req.body.name !== undefined) updates.name = sanitize(req.body.name, 100);
+    if (req.body.staffRole !== undefined && STAFF_ROLES.indexOf(req.body.staffRole) !== -1) updates.staffRole = req.body.staffRole;
+    if (req.body.locationAccess !== undefined && Array.isArray(req.body.locationAccess)) {
+      updates.locationAccess = req.body.locationAccess.map(l => sanitize(l, 100)).filter(Boolean);
+    }
+    if (req.body.technicianId !== undefined) updates.technicianId = sanitize(req.body.technicianId, 30) || null;
+    if (req.body.status !== undefined && ['active', 'blocked'].indexOf(req.body.status) !== -1) updates.status = req.body.status;
+    if (req.body.password) {
+      if (req.body.password.length < 6) return res.json({ ok: false, msg: 'Password must be at least 6 characters' });
+      updates.pass = await bcrypt.hash(req.body.password, BCRYPT_ROUNDS);
+    }
+    await db.collection('users').updateOne({ _id: new ObjectId(req.params.id), ownerId: req.userId }, { $set: updates });
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.delete('/api/staff/:id', auth, async (req, res) => {
+  try {
+    if (req.role !== 'owner') return res.json({ ok: false, msg: 'Owner access required.' });
+    if (!ObjectId.isValid(req.params.id)) return res.json({ ok: false, msg: 'Invalid ID' });
+    await db.collection('users').deleteOne({ _id: new ObjectId(req.params.id), ownerId: req.userId });
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
 });
 
 // ── LOCATIONS ────────────────────────────────────────────────────────────────
@@ -194,7 +302,7 @@ app.get('/api/leads', auth, async (req, res) => {
     const source = sanitize(req.query.source, 30);
     const status = sanitize(req.query.status, 20);
     const search = sanitize(req.query.search, 100);
-    if (location) query.location = location;
+    applyLocationScope(req, query, location);
     if (source && LEAD_SOURCES.indexOf(source) !== -1) query.source = source;
     if (status && LEAD_STATUSES.indexOf(status) !== -1) query.status = status;
     if (search) {
@@ -339,7 +447,7 @@ app.get('/api/inventory', auth, async (req, res) => {
     const location = sanitize(req.query.location, 100);
     const items = await db.collection('inventory_items').find({ userId: req.userId }).sort({ name: 1 }).toArray();
     const stockQuery = { userId: req.userId };
-    if (location) stockQuery.location = location;
+    applyLocationScope(req, stockQuery, location);
     const stocks = await db.collection('inventory_stock').find(stockQuery).toArray();
     const result = items.map(item => {
       const itemStocks = stocks.filter(s => s.itemId === item._id.toString());
@@ -475,7 +583,10 @@ app.get('/api/jobs', auth, async (req, res) => {
     const search = sanitize(req.query.search, 100);
     const query = { userId: req.userId };
     if (status) query.status = status;
-    if (location) query.location = location;
+    applyLocationScope(req, query, location);
+    if (req.role === 'staff' && req.user.staffRole === 'technician' && req.user.technicianId) {
+      query.technicianId = req.user.technicianId;
+    }
     if (search) {
       const safe = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
@@ -491,7 +602,7 @@ app.get('/api/jobs', auth, async (req, res) => {
 
 app.post('/api/jobs', auth, async (req, res) => {
   try {
-    let { customerName, customerPhone, serviceType, description, deviceModel, priority, location } = req.body;
+    let { customerName, customerPhone, serviceType, description, deviceModel, priority, location, warrantyDays } = req.body;
     customerName = sanitize(customerName, 100);
     customerPhone = sanitize(customerPhone, 15);
     serviceType = sanitize(serviceType, 100) || 'General';
@@ -499,7 +610,11 @@ app.post('/api/jobs', auth, async (req, res) => {
     deviceModel = sanitize(deviceModel, 200);
     location = sanitize(location, 100);
     priority = ['normal', 'urgent', 'vip'].indexOf(priority) !== -1 ? priority : 'normal';
+    warrantyDays = Math.min(3650, Math.max(0, parseInt(warrantyDays) || 0));
     if (!customerName || !customerPhone) return res.json({ ok: false, msg: 'Customer name and phone required' });
+    if (req.role === 'staff' && Array.isArray(req.user.locationAccess) && req.user.locationAccess.length && location && req.user.locationAccess.indexOf(location) === -1) {
+      return res.json({ ok: false, msg: 'You do not have access to this location' });
+    }
 
     const jobId = await generateJobId(req.userId);
     const job = {
@@ -507,6 +622,13 @@ app.post('/api/jobs', auth, async (req, res) => {
       priority, location, status: 'pending',
       statusHistory: [{ status: 'pending', time: new Date(), note: 'Created' }],
       cost: null, technicianId: null, technicianName: null,
+      // Invoicing
+      invoiceNumber: null, items: [], gstEnabled: false, gstPercent: 0, subtotal: 0, gstAmount: 0,
+      paymentStatus: 'unpaid', amountPaid: 0, payments: [],
+      // Warranty
+      warrantyDays, warrantyExpiresAt: null,
+      // Documents (base64, capped)
+      documents: [],
       createdAt: new Date(), updatedAt: new Date()
     };
     await db.collection('jobs').insertOne(job);
@@ -520,9 +642,18 @@ app.put('/api/jobs/:id/status', auth, async (req, res) => {
     const note = sanitize(req.body.note, 500);
     if (JOB_STATUSES.indexOf(status) === -1) return res.json({ ok: false, msg: 'Invalid status' });
     const jobId = sanitize(req.params.id, 30);
+    const setFields = { status, updatedAt: new Date() };
+    if (status === 'completed' || status === 'delivered') {
+      const job = await db.collection('jobs').findOne({ jobId, userId: req.userId });
+      if (job && job.warrantyDays > 0 && !job.warrantyExpiresAt) {
+        const expires = new Date();
+        expires.setDate(expires.getDate() + job.warrantyDays);
+        setFields.warrantyExpiresAt = expires;
+      }
+    }
     await db.collection('jobs').updateOne(
       { jobId, userId: req.userId },
-      { $set: { status, updatedAt: new Date() }, $push: { statusHistory: { status, time: new Date(), note } } }
+      { $set: setFields, $push: { statusHistory: { status, time: new Date(), note } } }
     );
     res.json({ ok: true });
   } catch (e) { res.json({ ok: false, msg: e.message }); }
@@ -537,6 +668,104 @@ app.put('/api/jobs/:id/cost', auth, async (req, res) => {
       { jobId, userId: req.userId },
       { $set: { cost, costNote, status: 'cost_sent', updatedAt: new Date() }, $push: { statusHistory: { status: 'cost_sent', time: new Date(), note: 'Cost: ' + cost } } }
     );
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+// ── GST INVOICING (itemized parts + labor) ────────────────────────────────────
+async function nextInvoiceNumber(userId) {
+  const count = await db.collection('jobs').countDocuments({ userId, invoiceNumber: { $ne: null } });
+  return 'INV-' + String(count + 1001).padStart(4, '0');
+}
+
+app.put('/api/jobs/:id/invoice', auth, async (req, res) => {
+  try {
+    const jobId = sanitize(req.params.id, 30);
+    const job = await db.collection('jobs').findOne({ jobId, userId: req.userId });
+    if (!job) return res.json({ ok: false, msg: 'Job not found' });
+
+    const rawItems = Array.isArray(req.body.items) ? req.body.items : [];
+    const items = rawItems.slice(0, 50).map(it => ({
+      description: sanitize(it.description, 200),
+      qty: Math.max(1, parseFloat(it.qty) || 1),
+      price: Math.max(0, parseFloat(it.price) || 0)
+    })).filter(it => it.description);
+    const gstEnabled = !!req.body.gstEnabled;
+    const gstPercent = gstEnabled ? Math.min(28, Math.max(0, parseFloat(req.body.gstPercent) || 0)) : 0;
+
+    const subtotal = items.reduce((a, it) => a + it.qty * it.price, 0);
+    const gstAmount = gstEnabled ? Math.round(subtotal * gstPercent) / 100 : 0;
+    const total = Math.round((subtotal + gstAmount) * 100) / 100;
+
+    const setFields = {
+      items, gstEnabled, gstPercent, subtotal, gstAmount, cost: total,
+      status: 'cost_sent', updatedAt: new Date()
+    };
+    if (!job.invoiceNumber) setFields.invoiceNumber = await nextInvoiceNumber(req.userId);
+
+    await db.collection('jobs').updateOne(
+      { jobId, userId: req.userId },
+      { $set: setFields, $push: { statusHistory: { status: 'cost_sent', time: new Date(), note: 'Invoice generated: ₹' + total } } }
+    );
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.post('/api/jobs/:id/payment', auth, async (req, res) => {
+  try {
+    const jobId = sanitize(req.params.id, 30);
+    const amount = Math.max(0, parseFloat(req.body.amount) || 0);
+    const method = sanitize(req.body.method, 30) || 'cash';
+    const note = sanitize(req.body.note, 300);
+    if (!amount) return res.json({ ok: false, msg: 'Valid amount required' });
+
+    const job = await db.collection('jobs').findOne({ jobId, userId: req.userId });
+    if (!job) return res.json({ ok: false, msg: 'Job not found' });
+
+    const amountPaid = Math.round(((job.amountPaid || 0) + amount) * 100) / 100;
+    const total = job.cost || 0;
+    const paymentStatus = total > 0 && amountPaid >= total ? 'paid' : (amountPaid > 0 ? 'partial' : 'unpaid');
+
+    await db.collection('jobs').updateOne(
+      { jobId, userId: req.userId },
+      {
+        $set: { amountPaid, paymentStatus, updatedAt: new Date() },
+        $push: { payments: { amount, method, note, date: new Date() } }
+      }
+    );
+    res.json({ ok: true, amountPaid, paymentStatus });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+// ── JOB DOCUMENTS (base64 photos, e.g. device damage / warranty card) ────────
+app.post('/api/jobs/:id/documents', auth, async (req, res) => {
+  try {
+    const jobId = sanitize(req.params.id, 30);
+    const name = sanitize(req.body.name, 150) || 'Document';
+    const dataUrl = String(req.body.dataUrl || '');
+    if (!dataUrl.startsWith('data:image/')) return res.json({ ok: false, msg: 'Only image uploads are supported' });
+    if (dataUrl.length > 1_500_000) return res.json({ ok: false, msg: 'Image too large (max ~1MB after compression)' });
+
+    const job = await db.collection('jobs').findOne({ jobId, userId: req.userId });
+    if (!job) return res.json({ ok: false, msg: 'Job not found' });
+    if ((job.documents || []).length >= 8) return res.json({ ok: false, msg: 'Max 8 documents per job' });
+
+    await db.collection('jobs').updateOne(
+      { jobId, userId: req.userId },
+      { $push: { documents: { name, dataUrl, uploadedAt: new Date() } } }
+    );
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.delete('/api/jobs/:id/documents/:index', auth, async (req, res) => {
+  try {
+    const jobId = sanitize(req.params.id, 30);
+    const idx = parseInt(req.params.index);
+    const job = await db.collection('jobs').findOne({ jobId, userId: req.userId });
+    if (!job || !job.documents || idx < 0 || idx >= job.documents.length) return res.json({ ok: false, msg: 'Not found' });
+    job.documents.splice(idx, 1);
+    await db.collection('jobs').updateOne({ jobId, userId: req.userId }, { $set: { documents: job.documents } });
     res.json({ ok: true });
   } catch (e) { res.json({ ok: false, msg: e.message }); }
 });
@@ -564,11 +793,200 @@ app.get('/api/customers', auth, async (req, res) => {
     }
     const customers = await db.collection('jobs').aggregate([
       { $match: query },
-      { $group: { _id: '$customerPhone', name: { $last: '$customerName' }, phone: { $last: '$customerPhone' }, totalJobs: { $sum: 1 }, lastJob: { $max: '$createdAt' } } },
+      { $group: { _id: '$customerPhone', name: { $last: '$customerName' }, phone: { $last: '$customerPhone' }, totalJobs: { $sum: 1 }, totalSpent: { $sum: { $ifNull: ['$cost', 0] } }, lastJob: { $max: '$createdAt' } } },
       { $sort: { lastJob: -1 } },
       { $limit: 500 }
     ]).toArray();
     res.json({ ok: true, customers });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+// Full activity timeline for one customer — jobs + leads combined, newest first.
+app.get('/api/customers/:phone/timeline', auth, async (req, res) => {
+  try {
+    const phone = sanitize(req.params.phone, 15);
+    const jobs = await db.collection('jobs').find({ userId: req.userId, customerPhone: phone }).sort({ createdAt: -1 }).toArray();
+    const leads = await db.collection('leads').find({ userId: req.userId, phone }).sort({ createdAt: -1 }).toArray();
+    const events = [];
+    jobs.forEach(j => events.push({
+      type: 'job', date: j.createdAt, jobId: j.jobId, serviceType: j.serviceType, status: j.status,
+      cost: j.cost, paymentStatus: j.paymentStatus, location: j.location
+    }));
+    leads.forEach(l => events.push({
+      type: 'lead', date: l.createdAt, source: l.source, status: l.status, location: l.location, notes: l.notes
+    }));
+    events.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const totalSpent = jobs.reduce((a, j) => a + (j.cost || 0), 0);
+    const totalDue = jobs.reduce((a, j) => a + Math.max(0, (j.cost || 0) - (j.amountPaid || 0)), 0);
+    res.json({ ok: true, name: jobs[0]?.customerName || leads[0]?.name || '', phone, events, totalJobs: jobs.length, totalSpent, totalDue });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+// ── ADMIN: WARRANTY EXPIRING ──────────────────────────────────────────────────
+app.get('/api/warranty/expiring', auth, requireAdmin, async (req, res) => {
+  try {
+    const days = Math.min(365, Math.max(1, parseInt(req.query.days) || 30));
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() + days);
+    const jobs = await db.collection('jobs').find({
+      userId: req.userId,
+      warrantyExpiresAt: { $ne: null, $lte: cutoff }
+    }).sort({ warrantyExpiresAt: 1 }).limit(200).toArray();
+    res.json({ ok: true, jobs });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+// ── ADMIN: REPORTS & ANALYTICS ─────────────────────────────────────────────────
+app.get('/api/reports/overview', auth, requireAdmin, async (req, res) => {
+  try {
+    const days = Math.min(365, Math.max(1, parseInt(req.query.days) || 30));
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const jobs = await db.collection('jobs').find({ userId: req.userId, createdAt: { $gte: since } }).toArray();
+
+    const byLocation = {}, byTechnician = {}, byService = {}, byMonth = {};
+    let totalRevenue = 0, totalDue = 0;
+    jobs.forEach(j => {
+      const rev = j.cost || 0;
+      totalRevenue += rev;
+      totalDue += Math.max(0, rev - (j.amountPaid || 0));
+
+      const loc = j.location || 'Unspecified';
+      if (!byLocation[loc]) byLocation[loc] = { jobs: 0, revenue: 0 };
+      byLocation[loc].jobs++; byLocation[loc].revenue += rev;
+
+      const tech = j.technicianName || 'Unassigned';
+      if (!byTechnician[tech]) byTechnician[tech] = { jobs: 0, revenue: 0 };
+      byTechnician[tech].jobs++; byTechnician[tech].revenue += rev;
+
+      const svc = j.serviceType || 'Other';
+      byService[svc] = (byService[svc] || 0) + 1;
+
+      const monthKey = new Date(j.createdAt).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+      if (!byMonth[monthKey]) byMonth[monthKey] = { jobs: 0, revenue: 0 };
+      byMonth[monthKey].jobs++; byMonth[monthKey].revenue += rev;
+    });
+
+    res.json({ ok: true, totalJobs: jobs.length, totalRevenue, totalDue, byLocation, byTechnician, byService, byMonth });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.get('/api/reports/export', auth, requireAdmin, async (req, res) => {
+  try {
+    const days = Math.min(3650, Math.max(1, parseInt(req.query.days) || 90));
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const jobs = await db.collection('jobs').find({ userId: req.userId, createdAt: { $gte: since } }).sort({ createdAt: -1 }).toArray();
+
+    const escapeCsv = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const header = ['Job ID', 'Customer', 'Phone', 'Location', 'Service', 'Status', 'Cost', 'Amount Paid', 'Payment Status', 'Technician', 'Created At'];
+    const rows = jobs.map(j => [
+      j.jobId, j.customerName, j.customerPhone, j.location || '', j.serviceType, j.status,
+      j.cost || 0, j.amountPaid || 0, j.paymentStatus || 'unpaid', j.technicianName || '', new Date(j.createdAt).toISOString()
+    ]);
+    const csv = [header, ...rows].map(r => r.map(escapeCsv).join(',')).join('\r\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="jobs-export.csv"');
+    res.send(csv);
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+// ── ADMIN: SUPPLIERS ───────────────────────────────────────────────────────────
+app.get('/api/suppliers', auth, requireAdmin, async (req, res) => {
+  const suppliers = await db.collection('suppliers').find({ userId: req.userId }).sort({ name: 1 }).toArray();
+  res.json({ ok: true, suppliers });
+});
+
+app.post('/api/suppliers', auth, requireAdmin, async (req, res) => {
+  try {
+    const name = sanitize(req.body.name, 150);
+    const contact = sanitize(req.body.contact, 100);
+    const phone = sanitize(req.body.phone, 15);
+    const email = sanitize(req.body.email, 150);
+    const address = sanitize(req.body.address, 300);
+    if (!name) return res.json({ ok: false, msg: 'Supplier name required' });
+    const doc = { userId: req.userId, name, contact, phone, email, address, createdAt: new Date() };
+    const r = await db.collection('suppliers').insertOne(doc);
+    res.json({ ok: true, supplier: { ...doc, _id: r.insertedId } });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.put('/api/suppliers/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) return res.json({ ok: false, msg: 'Invalid ID' });
+    const updates = {};
+    ['name', 'contact', 'address'].forEach(f => { if (req.body[f] !== undefined) updates[f] = sanitize(req.body[f], f === 'address' ? 300 : 150); });
+    if (req.body.phone !== undefined) updates.phone = sanitize(req.body.phone, 15);
+    if (req.body.email !== undefined) updates.email = sanitize(req.body.email, 150);
+    await db.collection('suppliers').updateOne({ _id: new ObjectId(req.params.id), userId: req.userId }, { $set: updates });
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.delete('/api/suppliers/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) return res.json({ ok: false, msg: 'Invalid ID' });
+    await db.collection('suppliers').deleteOne({ _id: new ObjectId(req.params.id), userId: req.userId });
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+// ── ADMIN: PURCHASE ORDERS ─────────────────────────────────────────────────────
+app.get('/api/purchase-orders', auth, requireAdmin, async (req, res) => {
+  const orders = await db.collection('purchase_orders').find({ userId: req.userId }).sort({ createdAt: -1 }).toArray();
+  res.json({ ok: true, orders });
+});
+
+app.post('/api/purchase-orders', auth, requireAdmin, async (req, res) => {
+  try {
+    const supplierId = sanitize(req.body.supplierId, 30);
+    const supplierName = sanitize(req.body.supplierName, 150);
+    const location = sanitize(req.body.location, 100);
+    const rawItems = Array.isArray(req.body.items) ? req.body.items : [];
+    const items = rawItems.slice(0, 50).map(it => ({
+      itemId: sanitize(it.itemId, 30), name: sanitize(it.name, 150),
+      qty: Math.max(1, parseInt(it.qty) || 1), cost: Math.max(0, parseFloat(it.cost) || 0)
+    })).filter(it => it.itemId && it.name);
+    if (!items.length) return res.json({ ok: false, msg: 'At least one item required' });
+    if (!location) return res.json({ ok: false, msg: 'Delivery location required' });
+    const totalCost = items.reduce((a, it) => a + it.qty * it.cost, 0);
+    const doc = {
+      userId: req.userId, supplierId, supplierName, location, items, totalCost,
+      status: 'pending', createdAt: new Date(), receivedAt: null
+    };
+    const r = await db.collection('purchase_orders').insertOne(doc);
+    res.json({ ok: true, order: { ...doc, _id: r.insertedId } });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.post('/api/purchase-orders/:id/receive', auth, requireAdmin, async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) return res.json({ ok: false, msg: 'Invalid ID' });
+    const order = await db.collection('purchase_orders').findOne({ _id: new ObjectId(req.params.id), userId: req.userId });
+    if (!order) return res.json({ ok: false, msg: 'Order not found' });
+    if (order.status === 'received') return res.json({ ok: false, msg: 'Already received' });
+
+    for (const it of order.items) {
+      await db.collection('inventory_stock').updateOne(
+        { userId: req.userId, itemId: it.itemId, location: order.location },
+        { $inc: { quantity: it.qty }, $set: { updatedAt: new Date() } },
+        { upsert: true }
+      );
+      await db.collection('inventory_logs').insertOne({
+        userId: req.userId, itemId: it.itemId, itemName: it.name, location: order.location,
+        type: 'restock', quantity: it.qty, note: 'Purchase order received (' + (order.supplierName || 'supplier') + ')', createdAt: new Date()
+      });
+    }
+    await db.collection('purchase_orders').updateOne({ _id: order._id }, { $set: { status: 'received', receivedAt: new Date() } });
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, msg: e.message }); }
+});
+
+app.delete('/api/purchase-orders/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) return res.json({ ok: false, msg: 'Invalid ID' });
+    await db.collection('purchase_orders').deleteOne({ _id: new ObjectId(req.params.id), userId: req.userId, status: 'pending' });
+    res.json({ ok: true });
   } catch (e) { res.json({ ok: false, msg: e.message }); }
 });
 

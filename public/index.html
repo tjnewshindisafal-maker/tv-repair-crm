@@ -111,6 +111,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15
 
 /* ── CHARTS (dataviz) ── */
 .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.admin-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.admin-tab{padding:9px 16px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text-sub);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;}
+.admin-tab:hover{border-color:var(--accent);color:var(--accent);}
+.admin-tab.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+.admin-pane{display:none;}
+.admin-pane.on{display:block;}
+.doc-thumb{width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer;}
+.timeline-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.timeline-item:last-child{border-bottom:none;}
+.timeline-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:6px;flex-shrink:0;}
 @media(max-width:900px){.charts-grid{grid-template-columns:1fr;}}
 .chart-card-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;}
 .chart-card-sub{font-size:12px;color:var(--text-sub);margin-bottom:14px;}
@@ -228,6 +238,7 @@ tbody tr:hover{background:var(--surface-2);}
       <button class="sb-btn" data-sec="sec-customers"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.2" r="3"/><path d="M2.6 19.5c0-3.2 2.9-5.7 6.4-5.7s6.4 2.5 6.4 5.7"/><circle cx="17" cy="9" r="2.4"/><path d="M15.2 19.5c.2-2.4 1.7-4.3 3.8-5.1"/></svg></span>Customers</button>
       <button class="sb-btn" data-sec="sec-inventory"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></span>Inventory <span class="sb-badge" id="lowStockBadge">0</span></button>
       <button class="sb-btn" data-sec="sec-locations"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12.2A7 7 0 1 0 5 9.8C5 15.7 12 22 12 22z"/><circle cx="12" cy="9.8" r="2.5"/></svg></span>Locations</button>
+      <button class="sb-btn hidden" id="sb-admin" data-sec="sec-admin"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z"/></svg></span>Admin Panel <span class="sb-badge hidden" id="warrantyBadge">0</span></button>
     </div>
 
     <div class="content">
@@ -359,7 +370,10 @@ tbody tr:hover{background:var(--surface-2);}
             <div class="mf"><label>Priority</label><select id="nj-priority"><option value="normal">Normal</option><option value="urgent">Urgent</option><option value="vip">VIP</option></select></div>
             <div class="mf"><label>Assign Technician</label><select id="nj-tech"><option value="">Not assigned</option></select></div>
           </div>
-          <div class="mf"><label>Location / Branch</label><select id="nj-location"><option value="">— Not specified —</option></select></div>
+          <div class="m-grid">
+            <div class="mf"><label>Location / Branch</label><select id="nj-location"><option value="">— Not specified —</option></select></div>
+            <div class="mf"><label>Warranty (days after delivery)</label><input type="number" id="nj-warranty" placeholder="e.g. 90" min="0"></div>
+          </div>
           <div class="mf"><label>Description / Notes</label><textarea id="nj-desc" placeholder="Notes about this job..."></textarea></div>
           <div style="display:flex;gap:10px;">
             <button class="btn-save" id="createJobBtn">Create Job</button>
@@ -380,7 +394,7 @@ tbody tr:hover{background:var(--surface-2);}
       <div class="section" id="sec-customers">
         <div class="panel">
           <div class="panel-head"><div class="panel-title">Customer History</div><input class="search-in" id="custSearch" placeholder="Search customer..."></div>
-          <div class="table-scroll"><table><thead><tr><th>Name</th><th>Phone</th><th>Total Jobs</th><th>Last Service</th></tr></thead><tbody id="custTb"></tbody></table></div>
+          <div class="table-scroll"><table><thead><tr><th>Name</th><th>Phone</th><th>Total Jobs</th><th>Total Spent</th><th>Last Service</th><th>Action</th></tr></thead><tbody id="custTb"></tbody></table></div>
         </div>
       </div>
 
@@ -416,19 +430,89 @@ tbody tr:hover{background:var(--surface-2);}
         </div>
       </div>
 
+      <!-- ADMIN PANEL -->
+      <div class="section" id="sec-admin">
+        <div class="admin-tabs">
+          <button class="admin-tab on" data-atab="at-staff">Staff</button>
+          <button class="admin-tab" data-atab="at-reports">Reports</button>
+          <button class="admin-tab" data-atab="at-vendors">Vendors</button>
+          <button class="admin-tab" data-atab="at-warranty">Warranty</button>
+        </div>
+
+        <!-- STAFF -->
+        <div class="admin-pane on" id="at-staff">
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Staff Accounts</div><button class="abtn ab-pri" onclick="openStaffModal()">+ Add Staff</button></div>
+            <p style="font-size:12px;color:var(--text-sub);margin-bottom:12px;">Admin: full access except staff management. Staff: leads/jobs/inventory only. Technician: sees only jobs assigned to them (optional).</p>
+            <div class="table-scroll"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Locations</th><th>Status</th><th>Actions</th></tr></thead><tbody id="staffTb"></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- REPORTS -->
+        <div class="admin-pane" id="at-reports">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Business Reports</div>
+              <div class="panel-acts">
+                <select class="filter-sel" id="reportDays">
+                  <option value="7">Last 7 days</option>
+                  <option value="30" selected>Last 30 days</option>
+                  <option value="90">Last 90 days</option>
+                  <option value="365">Last 12 months</option>
+                </select>
+                <button class="abtn ab-inv" onclick="exportReportCsv()">Export CSV</button>
+              </div>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-card sc-blue"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.2 6.5a3.5 3.5 0 0 1-4.6 4.6L4 16.7a1.8 1.8 0 0 0 2.6 2.6l5.6-5.6a3.5 3.5 0 0 1 4.6-4.6l-2.4 2.4-2-2 2.4-2.4z"/></svg></div><div><div class="stat-val" id="rep-st-jobs">0</div><div class="stat-lbl">Jobs in Period</div></div></div>
+              <div class="stat-card sc-green"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 8h5.2a2.3 2.3 0 0 1 0 4.6H9m0-4.6v8.6m0-4.3h5.2"/></svg></div><div><div class="stat-val" id="rep-st-revenue">₹0</div><div class="stat-lbl">Total Revenue</div></div></div>
+              <div class="stat-card sc-yellow"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div><div class="stat-val" id="rep-st-due">₹0</div><div class="stat-lbl">Amount Due</div></div></div>
+            </div>
+            <div class="charts-grid">
+              <div class="panel"><div class="chart-card-title">Revenue by Location</div><div id="reportLocChart"></div></div>
+              <div class="panel"><div class="chart-card-title">Revenue Trend (monthly)</div><div id="reportMonthChart"></div></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><div class="panel-title">Technician Performance</div></div>
+              <div class="table-scroll"><table><thead><tr><th>Technician</th><th>Jobs</th><th>Revenue</th></tr></thead><tbody id="reportTechTb"></tbody></table></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VENDORS -->
+        <div class="admin-pane" id="at-vendors">
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Suppliers</div><button class="abtn ab-pri" onclick="openSupplierModal()">+ Add Supplier</button></div>
+            <div class="table-scroll"><table><thead><tr><th>Name</th><th>Contact</th><th>Phone</th><th>Action</th></tr></thead><tbody id="suppliersTb"></tbody></table></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Purchase Orders</div><button class="abtn ab-pri" onclick="openPoModal()">+ New PO</button></div>
+            <div class="table-scroll"><table><thead><tr><th>Supplier</th><th>Location</th><th>Items</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody id="poTb"></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- WARRANTY -->
+        <div class="admin-pane" id="at-warranty">
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Warranty Expiring (next 30 days)</div></div>
+            <div class="table-scroll"><table><thead><tr><th>Job</th><th>Customer</th><th>Service</th><th>Location</th><th>Expires</th></tr></thead><tbody id="warrantyTb"></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
 
 <!-- JOB STATUS MODAL -->
 <div class="overlay" id="jobModal">
-  <div class="modal">
+  <div class="modal" style="max-width:640px;">
     <h3 id="jmTitle">Job Details</h3>
     <input type="hidden" id="jm-jobId">
     <div class="m-grid">
       <div class="mf"><label>Status</label>
         <select id="jm-status">
-          <option value="pending">⏳ Pending</option>
+          <option value="pending">Pending</option>
           <option value="in_progress">In Progress</option>
           <option value="waiting_parts">Waiting Parts</option>
           <option value="cost_sent">Cost Sent</option>
@@ -440,10 +524,41 @@ tbody tr:hover{background:var(--surface-2);}
       <div class="mf"><label>Technician</label><select id="jm-tech"><option value="">Not assigned</option></select></div>
     </div>
     <div class="mf"><label>Status Note</label><input type="text" id="jm-note" placeholder="e.g. Part ordered, 2 days"></div>
-    <div class="mf"><label>Set Cost (₹)</label><input type="number" id="jm-cost" placeholder="e.g. 1500"></div>
+    <div class="mf"><label>Set Cost (₹) — quick, no GST</label><input type="number" id="jm-cost" placeholder="e.g. 1500"></div>
     <div class="modal-btns">
       <button class="btn-save" id="saveJobBtn">Save Changes</button>
       <button class="btn-cancel" onclick="document.getElementById('jobModal').classList.remove('open')">Cancel</button>
+    </div>
+
+    <div id="jm-invoice-section" style="border-top:1px solid var(--border);margin-top:18px;padding-top:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <strong style="font-size:14px;">GST Invoice</strong>
+        <button class="abtn ab-inv" onclick="addInvoiceRow()">+ Line Item</button>
+      </div>
+      <div id="jm-invoice-rows"></div>
+      <div class="m-grid" style="margin-top:8px;">
+        <div class="mf"><label class="check-wrap" style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;"><input type="checkbox" id="jm-gst-enabled" style="width:auto;"> Apply GST</label></div>
+        <div class="mf"><label>GST %</label><input type="number" id="jm-gst-percent" placeholder="18" value="18"></div>
+      </div>
+      <div style="font-size:13px;color:var(--text-sub);margin-bottom:10px;" id="jm-invoice-total"></div>
+      <button class="btn-save" id="saveInvoiceBtn" style="margin-bottom:16px;">Generate / Update Invoice</button>
+    </div>
+
+    <div id="jm-payment-section" style="border-top:1px solid var(--border);padding-top:16px;">
+      <strong style="font-size:14px;">Payments</strong>
+      <div style="font-size:13px;margin:8px 0;" id="jm-payment-summary"></div>
+      <div id="jm-payments-list" style="margin-bottom:10px;"></div>
+      <div class="m-grid">
+        <div class="mf"><label>Amount (₹)</label><input type="number" id="jm-pay-amount" placeholder="e.g. 500"></div>
+        <div class="mf"><label>Method</label><select id="jm-pay-method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option><option value="bank_transfer">Bank Transfer</option></select></div>
+      </div>
+      <button class="btn-save" id="recordPaymentBtn" style="margin-bottom:16px;">Record Payment</button>
+    </div>
+
+    <div id="jm-docs-section" style="border-top:1px solid var(--border);padding-top:16px;">
+      <strong style="font-size:14px;">Documents / Photos</strong>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;" id="jm-docs-gallery"></div>
+      <input type="file" id="jm-doc-file" accept="image/*" style="font-size:12px;">
     </div>
   </div>
 </div>
@@ -584,6 +699,86 @@ tbody tr:hover{background:var(--surface-2);}
   </div>
 </div>
 
+<!-- CUSTOMER TIMELINE MODAL -->
+<div class="overlay" id="timelineModal">
+  <div class="modal" style="max-width:560px;">
+    <h3 id="timelineTitle">Customer Timeline</h3>
+    <div id="timelineSummary" style="font-size:13px;margin-bottom:14px;"></div>
+    <div id="timelineEvents" style="max-height:400px;overflow-y:auto;"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="document.getElementById('timelineModal').classList.remove('open')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- STAFF MODAL -->
+<div class="overlay" id="staffModal">
+  <div class="modal">
+    <h3>Add Staff Member</h3>
+    <div class="m-grid">
+      <div class="mf"><label>Name *</label><input type="text" id="sf-name" placeholder="Full name"></div>
+      <div class="mf"><label>Email *</label><input type="email" id="sf-email" placeholder="staff@business.com"></div>
+    </div>
+    <div class="m-grid">
+      <div class="mf"><label>Password *</label><input type="password" id="sf-password" placeholder="At least 6 characters"></div>
+      <div class="mf"><label>Role</label>
+        <select id="sf-role">
+          <option value="staff">Staff (leads/jobs/inventory)</option>
+          <option value="admin">Admin (full access, no staff mgmt)</option>
+          <option value="technician">Technician (own jobs only)</option>
+        </select>
+      </div>
+    </div>
+    <div class="mf" id="sf-tech-wrap" style="display:none;"><label>Linked Technician</label><select id="sf-technician"></select></div>
+    <div class="mf"><label>Restrict to Locations (leave empty = all)</label><div id="sf-locations" style="display:flex;flex-wrap:wrap;gap:8px;"></div></div>
+    <div class="modal-btns">
+      <button class="btn-save" id="saveStaffBtn">Add Staff</button>
+      <button class="btn-cancel" onclick="document.getElementById('staffModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUPPLIER MODAL -->
+<div class="overlay" id="supplierModal">
+  <div class="modal">
+    <h3>Add Supplier</h3>
+    <div class="m-grid">
+      <div class="mf"><label>Supplier Name *</label><input type="text" id="sp-name" placeholder="e.g. Sharma Electronics"></div>
+      <div class="mf"><label>Contact Person</label><input type="text" id="sp-contact" placeholder="Contact name"></div>
+    </div>
+    <div class="m-grid">
+      <div class="mf"><label>Phone</label><input type="tel" id="sp-phone" placeholder="9876543210"></div>
+      <div class="mf"><label>Email</label><input type="email" id="sp-email" placeholder="supplier@example.com"></div>
+    </div>
+    <div class="mf"><label>Address</label><input type="text" id="sp-address" placeholder="Supplier address"></div>
+    <div class="modal-btns">
+      <button class="btn-save" id="saveSupplierBtn">Save Supplier</button>
+      <button class="btn-cancel" onclick="document.getElementById('supplierModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- PURCHASE ORDER MODAL -->
+<div class="overlay" id="poModal">
+  <div class="modal">
+    <h3>New Purchase Order</h3>
+    <div class="m-grid">
+      <div class="mf"><label>Supplier *</label><select id="po-supplier"></select></div>
+      <div class="mf"><label>Delivery Location *</label><select id="po-location"></select></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px;">
+      <strong style="font-size:13px;">Items</strong>
+      <button class="abtn ab-inv" onclick="addPoRow()">+ Item</button>
+    </div>
+    <div id="po-rows"></div>
+    <div style="font-size:13px;color:var(--text-sub);margin:8px 0;" id="po-total"></div>
+    <div class="modal-btns">
+      <button class="btn-save" id="savePoBtn">Create PO</button>
+      <button class="btn-cancel" onclick="document.getElementById('poModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="toasts"></div>
 
 <script>
@@ -595,6 +790,8 @@ var token = localStorage.getItem('crm_token') || '';
 var allJobs = [], allTechs = [], allLocations = [], allLeads = [];
 var convertingLeadId = null;
 var csvHeaders = [], csvRows = [];
+var currentUser = null;
+var allSuppliers = [], allPurchaseItems = [];
 
 function toast(msg, type){
   var el = document.createElement('div');
@@ -676,8 +873,15 @@ function startApp(name, business){
   loadAll();
   api('/me').then(function(d){
     if(!d.ok) return;
-    var url = window.location.origin + '/api/webhooks/myoperator?token=' + d.user.webhookToken;
-    document.getElementById('webhookUrlBox').value = url;
+    currentUser = d.user;
+    if(d.user.webhookToken){
+      var url = window.location.origin + '/api/webhooks/myoperator?token=' + d.user.webhookToken;
+      document.getElementById('webhookUrlBox').value = url;
+    }
+    if(d.user.isAdmin){
+      document.getElementById('sb-admin').classList.remove('hidden');
+      loadStaff(); loadReports(); loadSuppliers(); loadPurchaseOrders(); loadWarrantyExpiring();
+    }
   });
 }
 document.getElementById('copyWebhookBtn').addEventListener('click', function(){
@@ -708,6 +912,14 @@ function showSection(id){
   if(btn) btn.classList.add('on');
   if (window.innerWidth <= 900) document.querySelector('.sidebar').classList.remove('on');
 }
+document.querySelectorAll('.admin-tab').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.admin-tab').forEach(function(b){ b.classList.remove('on'); });
+    document.querySelectorAll('.admin-pane').forEach(function(p){ p.classList.remove('on'); });
+    this.classList.add('on');
+    document.getElementById(this.getAttribute('data-atab')).classList.add('on');
+  });
+});
 document.querySelectorAll('.sb-btn').forEach(function(btn){
   btn.addEventListener('click', function(){ showSection(this.getAttribute('data-sec')); });
 });
@@ -784,7 +996,33 @@ function openJob(jobId){
   techSel.innerHTML = '<option value="">Not assigned</option>' + allTechs.map(function(t){
     return '<option value="'+t._id+'" '+(job.technicianId===t._id.toString()?'selected':'')+'>'+t.name+'</option>';
   }).join('');
+
+  // Invoice
+  jmInvoiceItems = (job.items && job.items.length) ? job.items.slice() : [];
+  document.getElementById('jm-gst-enabled').checked = !!job.gstEnabled;
+  document.getElementById('jm-gst-percent').value = job.gstPercent || 18;
+  renderInvoiceRows();
+
+  // Payments
+  var total = job.cost || 0;
+  var paid = job.amountPaid || 0;
+  document.getElementById('jm-payment-summary').innerHTML =
+    'Total: <b>₹'+total.toLocaleString('en-IN')+'</b> &nbsp;|&nbsp; Paid: <b style="color:var(--green);">₹'+paid.toLocaleString('en-IN')+'</b> &nbsp;|&nbsp; Due: <b style="color:var(--red);">₹'+Math.max(0,total-paid).toLocaleString('en-IN')+'</b> &nbsp;|&nbsp; '+leadStatusTagPlain(job.paymentStatus||'unpaid');
+  document.getElementById('jm-payments-list').innerHTML = (job.payments||[]).map(function(p){
+    return '<div style="font-size:12px;color:var(--text-sub);padding:4px 0;">₹'+p.amount+' via '+p.method+' — '+fmtDate(p.date)+(p.note?' ('+p.note+')':'')+'</div>';
+  }).join('') || '<div style="font-size:12px;color:var(--muted);">No payments recorded yet</div>';
+
+  // Documents
+  document.getElementById('jm-docs-gallery').innerHTML = (job.documents||[]).map(function(d, i){
+    return '<div style="position:relative;"><img class="doc-thumb" src="'+d.dataUrl+'" onclick="window.open(\''+d.dataUrl+'\',\'_blank\')"><button class="abtn ab-del" style="position:absolute;top:-6px;right:-6px;padding:2px 6px;font-size:10px;" onclick="deleteJobDocument(\''+jobId+'\','+i+')">×</button></div>';
+  }).join('') || '<div style="font-size:12px;color:var(--muted);">No documents uploaded</div>';
+
   document.getElementById('jobModal').classList.add('open');
+}
+function leadStatusTagPlain(s){
+  var labels = { unpaid:'Unpaid', partial:'Partial', paid:'Paid' };
+  var cls = { unpaid:'cancelled', partial:'pending', paid:'completed' };
+  return '<span class="tag '+(cls[s]||'')+'">'+(labels[s]||s)+'</span>';
 }
 
 document.getElementById('saveJobBtn').addEventListener('click', function(){
@@ -803,6 +1041,103 @@ document.getElementById('saveJobBtn').addEventListener('click', function(){
   });
 });
 
+// ── INVOICE BUILDER ──
+var jmInvoiceItems = [];
+function addInvoiceRow(){
+  jmInvoiceItems.push({ description:'', qty:1, price:0 });
+  renderInvoiceRows();
+}
+function updateInvoiceRow(idx, field, val){
+  jmInvoiceItems[idx][field] = field === 'description' ? val : (parseFloat(val)||0);
+  computeInvoiceTotal();
+}
+function removeInvoiceRow(idx){
+  jmInvoiceItems.splice(idx, 1);
+  renderInvoiceRows();
+}
+function renderInvoiceRows(){
+  document.getElementById('jm-invoice-rows').innerHTML = jmInvoiceItems.map(function(it, i){
+    return '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">'
+      +'<input type="text" placeholder="Part/Service" value="'+(it.description||'').replace(/"/g,'&quot;')+'" style="flex:2;padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font);background:var(--surface-2);color:var(--text);" onchange="updateInvoiceRow('+i+',\'description\',this.value)">'
+      +'<input type="number" placeholder="Qty" value="'+it.qty+'" style="flex:1;padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font);background:var(--surface-2);color:var(--text);" onchange="updateInvoiceRow('+i+',\'qty\',this.value)">'
+      +'<input type="number" placeholder="Price" value="'+it.price+'" style="flex:1;padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font);background:var(--surface-2);color:var(--text);" onchange="updateInvoiceRow('+i+',\'price\',this.value)">'
+      +'<button class="abtn ab-del" onclick="removeInvoiceRow('+i+')">×</button>'
+      +'</div>';
+  }).join('') || '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">No line items yet — add parts/labor above</div>';
+  computeInvoiceTotal();
+}
+function computeInvoiceTotal(){
+  var subtotal = jmInvoiceItems.reduce(function(a,it){ return a + (it.qty*it.price); }, 0);
+  var gstOn = document.getElementById('jm-gst-enabled').checked;
+  var gstPct = parseFloat(document.getElementById('jm-gst-percent').value) || 0;
+  var gstAmt = gstOn ? Math.round(subtotal*gstPct)/100 : 0;
+  var total = subtotal + gstAmt;
+  document.getElementById('jm-invoice-total').textContent = 'Subtotal: ₹'+subtotal.toLocaleString('en-IN')+(gstOn?' + GST ('+gstPct+'%): ₹'+gstAmt.toLocaleString('en-IN'):'')+' = Total: ₹'+total.toLocaleString('en-IN');
+}
+document.getElementById('jm-gst-enabled').addEventListener('change', computeInvoiceTotal);
+document.getElementById('jm-gst-percent').addEventListener('input', computeInvoiceTotal);
+
+document.getElementById('saveInvoiceBtn').addEventListener('click', function(){
+  var jobId = document.getElementById('jm-jobId').value;
+  var gstEnabled = document.getElementById('jm-gst-enabled').checked;
+  var gstPercent = document.getElementById('jm-gst-percent').value;
+  var items = jmInvoiceItems.filter(function(it){ return it.description; });
+  api('/jobs/'+jobId+'/invoice','PUT',{ items:items, gstEnabled:gstEnabled, gstPercent:gstPercent }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Invoice saved!');
+    loadJobs();
+    setTimeout(function(){ openJob(jobId); }, 300);
+  });
+});
+
+document.getElementById('recordPaymentBtn').addEventListener('click', function(){
+  var jobId = document.getElementById('jm-jobId').value;
+  var amount = document.getElementById('jm-pay-amount').value;
+  var method = document.getElementById('jm-pay-method').value;
+  if(!amount || amount <= 0){ toast('Enter a valid amount!','err'); return; }
+  api('/jobs/'+jobId+'/payment','POST',{ amount:amount, method:method }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Payment recorded!');
+    document.getElementById('jm-pay-amount').value = '';
+    loadJobs();
+    setTimeout(function(){ openJob(jobId); }, 300);
+  });
+});
+
+// ── JOB DOCUMENTS (client-side compress to keep payload small) ──
+document.getElementById('jm-doc-file').addEventListener('change', function(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var jobId = document.getElementById('jm-jobId').value;
+  var img = new Image();
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    img.onload = function(){
+      var maxDim = 1000;
+      var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      var canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      api('/jobs/'+jobId+'/documents','POST',{ name:file.name, dataUrl:dataUrl }).then(function(d){
+        if(!d.ok){ toast(d.msg,'err'); return; }
+        toast('Document uploaded!');
+        loadJobs();
+        setTimeout(function(){ openJob(jobId); }, 300);
+      });
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  this.value = '';
+});
+function deleteJobDocument(jobId, idx){
+  if(!confirm('Delete this document?')) return;
+  api('/jobs/'+jobId+'/documents/'+idx,'DELETE').then(function(){ toast('Deleted!'); loadJobs(); setTimeout(function(){ openJob(jobId); }, 300); });
+}
+
 document.getElementById('createJobBtn').addEventListener('click', function(){
   var cn = document.getElementById('nj-cname').value.trim();
   var cp = document.getElementById('nj-cphone').value.trim();
@@ -811,9 +1146,10 @@ document.getElementById('createJobBtn').addEventListener('click', function(){
   var pri = document.getElementById('nj-priority').value;
   var tech = document.getElementById('nj-tech').value;
   var loc = document.getElementById('nj-location').value;
+  var warranty = document.getElementById('nj-warranty').value;
   var desc = document.getElementById('nj-desc').value.trim();
   if(!cn || !cp || !svc){ toast('Name, phone and service type required!','err'); return; }
-  api('/jobs','POST',{ customerName:cn, customerPhone:cp, serviceType:svc, deviceModel:dev, priority:pri, location:loc, description:desc }).then(function(d){
+  api('/jobs','POST',{ customerName:cn, customerPhone:cp, serviceType:svc, deviceModel:dev, priority:pri, location:loc, warrantyDays:warranty, description:desc }).then(function(d){
     if(!d.ok){ toast(d.msg,'err'); return; }
     toast('Job created: ' + d.job.jobId);
     if (tech) api('/jobs/'+d.job.jobId+'/technician','PUT',{ technicianId: tech });
@@ -821,7 +1157,7 @@ document.getElementById('createJobBtn').addEventListener('click', function(){
       api('/leads/'+convertingLeadId+'/link-job','PUT',{ jobId: d.job.jobId }).then(function(){ loadLeads(); loadLeadStats(); });
       convertingLeadId = null;
     }
-    ['nj-cname','nj-cphone','nj-service','nj-device','nj-desc'].forEach(function(id){ document.getElementById(id).value=''; });
+    ['nj-cname','nj-cphone','nj-service','nj-device','nj-desc','nj-warranty'].forEach(function(id){ document.getElementById(id).value=''; });
     document.getElementById('nj-location').value='';
     showSection('sec-jobs');
     setTimeout(loadJobs, 300);
@@ -868,8 +1204,24 @@ function loadCustomers(){
 }
 function renderCustomers(custs){
   document.getElementById('custTb').innerHTML = custs.length ? custs.map(function(c){
-    return '<tr><td style="font-weight:600;">'+c.name+'</td><td style="font-size:12px;color:var(--text-sub);">+'+c.phone+'</td><td style="color:var(--accent);font-weight:700;">'+c.totalJobs+'</td><td style="font-size:12px;color:var(--text-sub);">'+fmtDate(c.lastJob)+'</td></tr>';
-  }).join('') : '<tr class="empty"><td colspan="4">No customers yet</td></tr>';
+    return '<tr><td style="font-weight:600;">'+c.name+'</td><td style="font-size:12px;color:var(--text-sub);">+'+c.phone+'</td><td style="color:var(--accent);font-weight:700;">'+c.totalJobs+'</td><td style="font-weight:700;">₹'+(c.totalSpent||0).toLocaleString('en-IN')+'</td><td style="font-size:12px;color:var(--text-sub);">'+fmtDate(c.lastJob)+'</td><td><button class="abtn ab-pri" onclick="openTimeline(\''+c.phone+'\')">Timeline</button></td></tr>';
+  }).join('') : '<tr class="empty"><td colspan="6">No customers yet</td></tr>';
+}
+
+function openTimeline(phone){
+  api('/customers/'+phone+'/timeline').then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    document.getElementById('timelineTitle').textContent = (d.name||'Customer') + ' — +' + d.phone;
+    document.getElementById('timelineSummary').innerHTML =
+      'Total Jobs: <b>'+d.totalJobs+'</b> &nbsp;|&nbsp; Total Spent: <b>₹'+d.totalSpent.toLocaleString('en-IN')+'</b> &nbsp;|&nbsp; Due: <b style="color:var(--red);">₹'+d.totalDue.toLocaleString('en-IN')+'</b>';
+    document.getElementById('timelineEvents').innerHTML = d.events.length ? d.events.map(function(e){
+      var label = e.type === 'job'
+        ? '<b>'+e.jobId+'</b> — '+e.serviceType+' ('+e.status+')'+(e.cost?' · ₹'+e.cost:'')
+        : 'Lead via '+(LEAD_SOURCE_LABELS[e.source]||e.source)+' ('+e.status+')';
+      return '<div class="timeline-item"><div class="timeline-dot"></div><div><div style="font-size:13px;">'+label+'</div><div style="font-size:11px;color:var(--muted);">'+fmtDate(e.date)+(e.location?' · '+e.location:'')+'</div></div></div>';
+    }).join('') : '<div class="chart-empty">No activity yet</div>';
+    document.getElementById('timelineModal').classList.add('open');
+  });
 }
 document.getElementById('custSearch').addEventListener('input', function(){
   api('/customers?search='+encodeURIComponent(this.value)).then(function(d){ renderCustomers(d.customers||[]); });
@@ -1423,6 +1775,215 @@ function renderLeadsSourceChart(bySource){
     return { label: LEAD_SOURCE_LABELS[k] || k, value: bySource[k] };
   }).sort(function(a,b){ return b.value - a.value; });
   renderBarChart('leadsSourceChart', data, { });
+}
+
+// ══════════════════════════ ADMIN: STAFF ══════════════════════════
+var allStaff = [];
+function loadStaff(){
+  api('/staff').then(function(d){
+    if(!d.ok) return;
+    allStaff = d.staff || [];
+    renderStaff();
+  });
+}
+function renderStaff(){
+  document.getElementById('staffTb').innerHTML = allStaff.length ? allStaff.map(function(s){
+    return '<tr>'
+      +'<td style="font-weight:600;">'+s.name+'</td>'
+      +'<td style="font-size:12px;color:var(--text-sub);">'+s.email+'</td>'
+      +'<td>'+(s.staffRole||'staff')+'</td>'
+      +'<td style="font-size:12px;">'+((s.locationAccess&&s.locationAccess.length)?s.locationAccess.join(', '):'All')+'</td>'
+      +'<td>'+(s.status==='blocked'?'<span class="tag cancelled">Blocked</span>':'<span class="tag completed">Active</span>')+'</td>'
+      +'<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'
+        +'<button class="abtn '+(s.status==='blocked'?'ab-gr':'ab-del')+'" onclick="toggleStaffStatus(\''+s._id+'\',\''+(s.status==='blocked'?'active':'blocked')+'\')">'+(s.status==='blocked'?'Unblock':'Block')+'</button>'
+        +'<button class="abtn ab-del" onclick="deleteStaff(\''+s._id+'\')">Delete</button>'
+      +'</div></td>'
+      +'</tr>';
+  }).join('') : '<tr class="empty"><td colspan="6">No staff added yet</td></tr>';
+}
+function openStaffModal(){
+  document.getElementById('sf-name').value = '';
+  document.getElementById('sf-email').value = '';
+  document.getElementById('sf-password').value = '';
+  document.getElementById('sf-role').value = 'staff';
+  document.getElementById('sf-technician').innerHTML = '<option value="">— None —</option>' + allTechs.map(function(t){ return '<option value="'+t._id+'">'+t.name+'</option>'; }).join('');
+  document.getElementById('sf-tech-wrap').style.display = 'none';
+  document.getElementById('sf-locations').innerHTML = allLocations.map(function(l){
+    return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;"><input type="checkbox" value="'+l.name+'" class="sf-loc-chk" style="width:auto;">'+l.name+'</label>';
+  }).join('') || '<span style="font-size:12px;color:var(--muted);">No locations added yet</span>';
+  document.getElementById('staffModal').classList.add('open');
+}
+document.getElementById('sf-role').addEventListener('change', function(){
+  document.getElementById('sf-tech-wrap').style.display = this.value === 'technician' ? 'block' : 'none';
+});
+document.getElementById('saveStaffBtn').addEventListener('click', function(){
+  var name = document.getElementById('sf-name').value.trim();
+  var email = document.getElementById('sf-email').value.trim();
+  var password = document.getElementById('sf-password').value;
+  var staffRole = document.getElementById('sf-role').value;
+  var technicianId = document.getElementById('sf-technician').value;
+  var locationAccess = Array.prototype.slice.call(document.querySelectorAll('.sf-loc-chk:checked')).map(function(c){ return c.value; });
+  if(!name || !email || !password){ toast('Name, email and password required!','err'); return; }
+  api('/staff','POST',{ name:name, email:email, password:password, staffRole:staffRole, technicianId:technicianId, locationAccess:locationAccess }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Staff added!');
+    document.getElementById('staffModal').classList.remove('open');
+    loadStaff();
+  });
+});
+function toggleStaffStatus(id, status){
+  api('/staff/'+id,'PUT',{ status:status }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Updated!'); loadStaff();
+  });
+}
+function deleteStaff(id){
+  if(!confirm('Remove this staff member?')) return;
+  api('/staff/'+id,'DELETE').then(function(){ toast('Removed!'); loadStaff(); });
+}
+
+// ══════════════════════════ ADMIN: REPORTS ══════════════════════════
+function loadReports(){
+  var days = document.getElementById('reportDays').value || 30;
+  api('/reports/overview?days='+days).then(function(d){
+    if(!d.ok) return;
+    document.getElementById('rep-st-jobs').textContent = d.totalJobs;
+    document.getElementById('rep-st-revenue').textContent = '₹'+d.totalRevenue.toLocaleString('en-IN');
+    document.getElementById('rep-st-due').textContent = '₹'+d.totalDue.toLocaleString('en-IN');
+
+    var locData = Object.keys(d.byLocation).map(function(k){ return { label:k, value: d.byLocation[k].revenue }; }).sort(function(a,b){ return b.value-a.value; });
+    renderBarChart('reportLocChart', locData, { valuePrefix:'₹' });
+
+    var months = Object.keys(d.byMonth).map(function(k){ return { label:k, value: d.byMonth[k].revenue }; });
+    renderLineChart('reportMonthChart', months, { valuePrefix:'₹' });
+
+    var techs = Object.keys(d.byTechnician).map(function(k){ return { name:k, jobs:d.byTechnician[k].jobs, revenue:d.byTechnician[k].revenue }; }).sort(function(a,b){ return b.revenue-a.revenue; });
+    document.getElementById('reportTechTb').innerHTML = techs.length ? techs.map(function(t){
+      return '<tr><td style="font-weight:600;">'+t.name+'</td><td>'+t.jobs+'</td><td>₹'+t.revenue.toLocaleString('en-IN')+'</td></tr>';
+    }).join('') : '<tr class="empty"><td colspan="3">No data in this period</td></tr>';
+  });
+}
+document.getElementById('reportDays').addEventListener('change', loadReports);
+function exportReportCsv(){
+  var days = document.getElementById('reportDays').value || 30;
+  window.open('/api/reports/export?days='+days+'&token='+encodeURIComponent(token), '_blank');
+}
+
+// ══════════════════════════ ADMIN: SUPPLIERS & PURCHASE ORDERS ══════════════════════════
+function loadSuppliers(){
+  api('/suppliers').then(function(d){
+    if(!d.ok) return;
+    allSuppliers = d.suppliers || [];
+    renderSuppliers();
+    document.getElementById('po-supplier').innerHTML = allSuppliers.map(function(s){ return '<option value="'+s._id+'" data-name="'+s.name+'">'+s.name+'</option>'; }).join('') || '<option value="">Add a supplier first</option>';
+  });
+}
+function renderSuppliers(){
+  document.getElementById('suppliersTb').innerHTML = allSuppliers.length ? allSuppliers.map(function(s){
+    return '<tr><td style="font-weight:600;">'+s.name+'</td><td style="font-size:12px;">'+(s.contact||'—')+'</td><td style="font-size:12px;color:var(--text-sub);">'+(s.phone?'+'+s.phone:'—')+'</td><td><button class="abtn ab-del" onclick="deleteSupplier(\''+s._id+'\')">Delete</button></td></tr>';
+  }).join('') : '<tr class="empty"><td colspan="4">No suppliers added yet</td></tr>';
+}
+function openSupplierModal(){
+  ['sp-name','sp-contact','sp-phone','sp-email','sp-address'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('supplierModal').classList.add('open');
+}
+document.getElementById('saveSupplierBtn').addEventListener('click', function(){
+  var name = document.getElementById('sp-name').value.trim();
+  if(!name){ toast('Supplier name required!','err'); return; }
+  api('/suppliers','POST',{
+    name:name, contact:document.getElementById('sp-contact').value.trim(),
+    phone:document.getElementById('sp-phone').value.trim(), email:document.getElementById('sp-email').value.trim(),
+    address:document.getElementById('sp-address').value.trim()
+  }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Supplier added!');
+    document.getElementById('supplierModal').classList.remove('open');
+    loadSuppliers();
+  });
+});
+function deleteSupplier(id){
+  if(!confirm('Delete this supplier?')) return;
+  api('/suppliers/'+id,'DELETE').then(function(){ toast('Deleted!'); loadSuppliers(); });
+}
+
+function loadPurchaseOrders(){
+  api('/purchase-orders').then(function(d){
+    if(!d.ok) return;
+    document.getElementById('poTb').innerHTML = (d.orders||[]).length ? d.orders.map(function(o){
+      return '<tr><td style="font-weight:600;">'+(o.supplierName||'—')+'</td><td style="font-size:12px;">'+o.location+'</td><td style="font-size:12px;">'+o.items.length+' items</td><td style="font-weight:700;">₹'+o.totalCost.toLocaleString('en-IN')+'</td><td>'+(o.status==='received'?'<span class="tag completed">Received</span>':'<span class="tag pending">Pending</span>')+'</td>'
+        +'<td>'+(o.status==='pending'?'<button class="abtn ab-gr" onclick="receivePo(\''+o._id+'\')">Mark Received</button>':'—')+'</td></tr>';
+    }).join('') : '<tr class="empty"><td colspan="6">No purchase orders yet</td></tr>';
+  });
+}
+function openPoModal(){
+  allPurchaseItems = [];
+  document.getElementById('po-location').innerHTML = allLocations.map(function(l){ return '<option value="'+l.name+'">'+l.name+'</option>'; }).join('') || '<option value="">Add a location first</option>';
+  renderPoRows();
+  document.getElementById('poModal').classList.add('open');
+}
+function addPoRow(){
+  allPurchaseItems.push({ itemId:'', name:'', qty:1, cost:0 });
+  renderPoRows();
+}
+function updatePoRow(idx, field, val){
+  if(field === 'itemId'){
+    var item = allInventory.find(function(i){ return i._id === val; });
+    allPurchaseItems[idx].itemId = val;
+    allPurchaseItems[idx].name = item ? item.name : '';
+    allPurchaseItems[idx].cost = item ? item.costPrice : 0;
+  } else {
+    allPurchaseItems[idx][field] = parseFloat(val) || 0;
+  }
+  renderPoRows();
+}
+function removePoRow(idx){ allPurchaseItems.splice(idx,1); renderPoRows(); }
+function renderPoRows(){
+  document.getElementById('po-rows').innerHTML = allPurchaseItems.map(function(it, i){
+    var opts = allInventory.map(function(inv){ return '<option value="'+inv._id+'" '+(it.itemId===inv._id?'selected':'')+'>'+inv.name+'</option>'; }).join('');
+    return '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">'
+      +'<select style="flex:2;padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font);background:var(--surface-2);color:var(--text);" onchange="updatePoRow('+i+',\'itemId\',this.value)"><option value="">— Select item —</option>'+opts+'</select>'
+      +'<input type="number" placeholder="Qty" value="'+it.qty+'" style="flex:1;padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font);background:var(--surface-2);color:var(--text);" onchange="updatePoRow('+i+',\'qty\',this.value)">'
+      +'<input type="number" placeholder="Cost" value="'+it.cost+'" style="flex:1;padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font);background:var(--surface-2);color:var(--text);" onchange="updatePoRow('+i+',\'cost\',this.value)">'
+      +'<button class="abtn ab-del" onclick="removePoRow('+i+')">×</button>'
+      +'</div>';
+  }).join('') || '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Add items above</div>';
+  var total = allPurchaseItems.reduce(function(a,it){ return a + it.qty*it.cost; }, 0);
+  document.getElementById('po-total').textContent = 'Total: ₹'+total.toLocaleString('en-IN');
+}
+document.getElementById('savePoBtn').addEventListener('click', function(){
+  var supplierSel = document.getElementById('po-supplier');
+  var supplierId = supplierSel.value;
+  var supplierName = supplierSel.selectedOptions.length ? supplierSel.selectedOptions[0].getAttribute('data-name') : '';
+  var location = document.getElementById('po-location').value;
+  var items = allPurchaseItems.filter(function(it){ return it.itemId; });
+  if(!location){ toast('Select a delivery location!','err'); return; }
+  if(!items.length){ toast('Add at least one item!','err'); return; }
+  api('/purchase-orders','POST',{ supplierId:supplierId, supplierName:supplierName, location:location, items:items }).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Purchase order created!');
+    document.getElementById('poModal').classList.remove('open');
+    loadPurchaseOrders();
+  });
+});
+function receivePo(id){
+  if(!confirm('Mark as received? This will add the items to inventory stock.')) return;
+  api('/purchase-orders/'+id+'/receive','POST',{}).then(function(d){
+    if(!d.ok){ toast(d.msg,'err'); return; }
+    toast('Stock updated!');
+    loadPurchaseOrders(); loadInventory();
+  });
+}
+
+// ══════════════════════════ ADMIN: WARRANTY ══════════════════════════
+function loadWarrantyExpiring(){
+  api('/warranty/expiring?days=30').then(function(d){
+    if(!d.ok) return;
+    document.getElementById('warrantyBadge').textContent = d.jobs.length;
+    document.getElementById('warrantyBadge').classList.toggle('hidden', d.jobs.length === 0);
+    document.getElementById('warrantyTb').innerHTML = d.jobs.length ? d.jobs.map(function(j){
+      return '<tr><td style="font-family:monospace;color:var(--accent);">'+j.jobId+'</td><td>'+j.customerName+'</td><td style="font-size:12px;">'+j.serviceType+'</td><td style="font-size:12px;">'+(j.location||'—')+'</td><td style="font-size:12px;color:var(--red);font-weight:600;">'+fmtDate(j.warrantyExpiresAt)+'</td></tr>';
+    }).join('') : '<tr class="empty"><td colspan="5">No warranties expiring soon</td></tr>';
+  });
 }
 </script>
 </body>
