@@ -18,11 +18,11 @@
   --yellow:#f5a524;--yellow-bg:#fef6e8;
   --side-bg:#0c0e1e;--side-bg-2:#12142a;--side-text:#9498b3;
   --side-active-bg:rgba(109,94,248,.16);--side-active-text:#b6acfd;
-  --radius:14px;--radius-lg:18px;
-  --shadow-sm:0 1px 2px rgba(15,17,31,.05);
-  --shadow:0 1px 2px rgba(15,17,31,.04),0 4px 14px rgba(15,17,31,.05);
-  --shadow-md:0 4px 18px rgba(15,17,31,.09);
-  --shadow-lg:0 20px 50px rgba(15,17,31,.18);
+  --radius:10px;--radius-lg:12px;
+  --shadow-sm:0 1px 2px rgba(15,17,31,.04);
+  --shadow:0 1px 2px rgba(15,17,31,.04);
+  --shadow-md:0 2px 6px rgba(15,17,31,.06);
+  --shadow-lg:0 8px 28px rgba(15,17,31,.14);
   --font:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   /* dataviz palette — validated categorical + chart chrome tokens */
   --viz-surface:#fcfcfb;--viz-text-primary:#0b0b0b;--viz-text-secondary:#52514e;--viz-muted:#898781;
@@ -36,10 +36,10 @@
   --accent-bg:#211d3d;
   --green-bg:#0d2a1e;--blue-bg:#111d38;--red-bg:#2c1717;--yellow-bg:#2c2109;
   --side-bg:#050611;--side-bg-2:#0a0b18;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
-  --shadow:0 1px 2px rgba(0,0,0,.35),0 4px 14px rgba(0,0,0,.3);
-  --shadow-md:0 4px 18px rgba(0,0,0,.4);
-  --shadow-lg:0 20px 50px rgba(0,0,0,.6);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+  --shadow-md:0 2px 6px rgba(0,0,0,.3);
+  --shadow-lg:0 8px 28px rgba(0,0,0,.5);
   --viz-surface:#1a1a19;--viz-text-primary:#ffffff;--viz-text-secondary:#c3c2b7;--viz-muted:#898781;--viz-gridline:#2c2c2a;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -51,14 +51,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15
   background:radial-gradient(circle at 18% 20%,rgba(109,94,248,.28),transparent 42%),radial-gradient(circle at 82% 78%,rgba(47,111,237,.22),transparent 42%),linear-gradient(160deg,#0a0b18,#14162c);}
 .auth-box{background:var(--surface);border-radius:var(--radius-lg);padding:36px;width:100%;max-width:400px;box-shadow:var(--shadow-lg);border:1px solid var(--border);}
 .auth-title{font-size:23px;font-weight:800;margin-bottom:4px;letter-spacing:-.02em;color:var(--text);}
-.auth-title span{background:var(--accent-grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.auth-title span{color:var(--accent);}
 .auth-sub{font-size:13px;color:var(--text-sub);margin-bottom:24px;}
 .af{margin-bottom:14px;}
 .af label{display:block;font-size:12.5px;font-weight:600;color:var(--text-sub);margin-bottom:6px;}
 .af input{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:var(--font);background:var(--surface-2);color:var(--text);transition:border-color .15s,box-shadow .15s;}
 .af input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-bg);background:var(--surface);}
-.auth-btn{width:100%;padding:13px;background:var(--accent-grad);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font);margin-top:8px;box-shadow:0 6px 16px rgba(109,94,248,.35);transition:transform .15s,box-shadow .15s;}
-.auth-btn:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(109,94,248,.42);}
+.auth-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font);margin-top:8px;transition:background .15s;}
+.auth-btn:hover{background:var(--accent-dark);}
 .auth-switch{text-align:center;font-size:13px;color:var(--text-sub);margin-top:18px;}
 .auth-switch a{color:var(--accent);font-weight:600;cursor:pointer;text-decoration:none;}
 .auth-err{background:var(--red-bg);color:var(--red);padding:10px 12px;border-radius:9px;font-size:12px;margin-bottom:14px;display:none;border:1px solid rgba(240,68,56,.25);}
@@ -66,7 +66,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15
 /* ── APP SHELL ── */
 .nav{background:var(--surface);border-bottom:1px solid var(--border);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;position:sticky;top:0;z-index:50;}
 .nav-logo{font-weight:800;font-size:16px;letter-spacing:-.01em;color:var(--text);}
-.nav-logo span{background:var(--accent-grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.nav-logo span{color:var(--accent);}
 .nav-right{display:flex;align-items:center;gap:10px;}
 .nav-biz{font-size:13px;font-weight:600;padding:6px 13px;background:var(--surface-2);border-radius:999px;border:1px solid var(--border);color:var(--text);}
 .btn-lo{background:transparent;border:1px solid var(--border);color:var(--text-sub);padding:8px 14px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;}
@@ -80,8 +80,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15
 .sb-btn{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border:none;background:transparent;border-radius:11px;color:var(--side-text);font-size:13.5px;font-weight:500;cursor:pointer;text-align:left;font-family:var(--font);margin-bottom:3px;transition:all .15s;position:relative;}
 .sb-btn:hover{background:rgba(255,255,255,.05);color:#fff;}
 .sb-btn.on{background:var(--side-active-bg);color:var(--side-active-text);font-weight:700;}
-.sb-btn.on::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--accent-grad);border-radius:0 3px 3px 0;}
-.sb-ico{font-size:16px;width:20px;text-align:center;flex-shrink:0;}
+.sb-btn.on::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--accent);border-radius:0 3px 3px 0;}
+.sb-ico{width:19px;height:19px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;}
+.sb-ico svg{width:100%;height:100%;}
+.stat-ico svg{width:22px;height:22px;}
 .sb-badge{background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:auto;}
 
 .content{flex:1;padding:24px;max-width:1320px;min-width:0;}
@@ -91,7 +93,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15
 
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:14px;margin-bottom:20px;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:17px;box-shadow:var(--shadow);display:flex;align-items:center;gap:13px;transition:transform .15s,box-shadow .15s;}
-.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.stat-card:hover{border-color:var(--accent);}
 .stat-ico{width:44px;height:44px;border-radius:12px;font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .sc-blue .stat-ico{background:var(--blue-bg);color:var(--blue);}
 .sc-green .stat-ico{background:var(--green-bg);color:var(--green);}
@@ -133,8 +135,8 @@ tbody tr:hover{background:var(--surface-2);}
 .ab-gr{background:var(--green);color:#fff;}
 .ab-del{background:var(--red);color:#fff;}
 .ab-inv{background:var(--blue);color:#fff;}
-.btn-save{background:var(--accent-grad);color:#fff;padding:11px 20px;font-size:13.5px;font-weight:700;box-shadow:0 6px 16px rgba(109,94,248,.3);}
-.btn-save:hover{filter:brightness(1.06);}
+.btn-save{background:var(--accent);color:#fff;padding:10px 18px;font-size:13.5px;font-weight:700;}
+.btn-save:hover{background:var(--accent-dark);}
 .btn-cancel{background:var(--surface-2);color:var(--text-sub);border:1px solid var(--border);padding:11px 20px;font-size:13.5px;}
 
 .tag{display:inline-block;padding:4px 10px;border-radius:999px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
@@ -216,14 +218,14 @@ tbody tr:hover{background:var(--surface-2);}
 
   <div class="layout">
     <div class="sidebar">
-      <button class="sb-btn on" data-sec="sec-overview"><span class="sb-ico">📊</span>Overview</button>
-      <button class="sb-btn" data-sec="sec-leads"><span class="sb-ico">📞</span>Leads / Calls <span class="sb-badge" id="newLeadsBadge">0</span></button>
-      <button class="sb-btn" data-sec="sec-jobs"><span class="sb-ico">🔧</span>All Jobs <span class="sb-badge" id="pendingBadge">0</span></button>
-      <button class="sb-btn" data-sec="sec-new-job"><span class="sb-ico">➕</span>New Job</button>
-      <button class="sb-btn" data-sec="sec-technicians"><span class="sb-ico">👤</span>Technicians</button>
-      <button class="sb-btn" data-sec="sec-customers"><span class="sb-ico">👥</span>Customers</button>
-      <button class="sb-btn" data-sec="sec-inventory"><span class="sb-ico">📦</span>Inventory <span class="sb-badge" id="lowStockBadge">0</span></button>
-      <button class="sb-btn" data-sec="sec-locations"><span class="sb-ico">📍</span>Locations</button>
+      <button class="sb-btn on" data-sec="sec-overview"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>Overview</button>
+      <button class="sb-btn" data-sec="sec-leads"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></span>Leads / Calls <span class="sb-badge" id="newLeadsBadge">0</span></button>
+      <button class="sb-btn" data-sec="sec-jobs"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.2 6.5a3.5 3.5 0 0 1-4.6 4.6L4 16.7a1.8 1.8 0 0 0 2.6 2.6l5.6-5.6a3.5 3.5 0 0 1 4.6-4.6l-2.4 2.4-2-2 2.4-2.4z"/></svg></span>All Jobs <span class="sb-badge" id="pendingBadge">0</span></button>
+      <button class="sb-btn" data-sec="sec-new-job"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>New Job</button>
+      <button class="sb-btn" data-sec="sec-technicians"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 21c0-4 3.4-6.8 7.5-6.8s7.5 2.8 7.5 6.8"/></svg></span>Technicians</button>
+      <button class="sb-btn" data-sec="sec-customers"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.2" r="3"/><path d="M2.6 19.5c0-3.2 2.9-5.7 6.4-5.7s6.4 2.5 6.4 5.7"/><circle cx="17" cy="9" r="2.4"/><path d="M15.2 19.5c.2-2.4 1.7-4.3 3.8-5.1"/></svg></span>Customers</button>
+      <button class="sb-btn" data-sec="sec-inventory"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></span>Inventory <span class="sb-badge" id="lowStockBadge">0</span></button>
+      <button class="sb-btn" data-sec="sec-locations"><span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12.2A7 7 0 1 0 5 9.8C5 15.7 12 22 12 22z"/><circle cx="12" cy="9.8" r="2.5"/></svg></span>Locations</button>
     </div>
 
     <div class="content">
@@ -231,12 +233,12 @@ tbody tr:hover{background:var(--surface-2);}
       <!-- OVERVIEW -->
       <div class="section on" id="sec-overview">
         <div class="stats-grid">
-          <div class="stat-card sc-blue"><div class="stat-ico">⏳</div><div><div class="stat-val" id="st-pending">0</div><div class="stat-lbl">Pending Jobs</div></div></div>
-          <div class="stat-card sc-acc"><div class="stat-ico">🔧</div><div><div class="stat-val" id="st-inprog">0</div><div class="stat-lbl">In Progress</div></div></div>
-          <div class="stat-card sc-green"><div class="stat-ico">✅</div><div><div class="stat-val" id="st-done">0</div><div class="stat-lbl">Completed</div></div></div>
-          <div class="stat-card sc-yellow"><div class="stat-ico">💰</div><div><div class="stat-val" id="st-revenue">₹0</div><div class="stat-lbl">Total Revenue</div></div></div>
-          <div class="stat-card sc-blue"><div class="stat-ico">👥</div><div><div class="stat-val" id="st-customers">0</div><div class="stat-lbl">Total Customers</div></div></div>
-          <div class="stat-card sc-acc"><div class="stat-ico">📞</div><div><div class="stat-val" id="st-leads">0</div><div class="stat-lbl">Total Leads/Calls</div></div></div>
+          <div class="stat-card sc-blue"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg></div><div><div class="stat-val" id="st-pending">0</div><div class="stat-lbl">Pending Jobs</div></div></div>
+          <div class="stat-card sc-acc"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.2 6.5a3.5 3.5 0 0 1-4.6 4.6L4 16.7a1.8 1.8 0 0 0 2.6 2.6l5.6-5.6a3.5 3.5 0 0 1 4.6-4.6l-2.4 2.4-2-2 2.4-2.4z"/></svg></div><div><div class="stat-val" id="st-inprog">0</div><div class="stat-lbl">In Progress</div></div></div>
+          <div class="stat-card sc-green"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.3 12.2l2.4 2.4 4.8-5"/></svg></div><div><div class="stat-val" id="st-done">0</div><div class="stat-lbl">Completed</div></div></div>
+          <div class="stat-card sc-yellow"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 8h5.2a2.3 2.3 0 0 1 0 4.6H9m0-4.6v8.6m0-4.3h5.2"/></svg></div><div><div class="stat-val" id="st-revenue">₹0</div><div class="stat-lbl">Total Revenue</div></div></div>
+          <div class="stat-card sc-blue"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.2" r="3"/><path d="M2.6 19.5c0-3.2 2.9-5.7 6.4-5.7s6.4 2.5 6.4 5.7"/><circle cx="17" cy="9" r="2.4"/><path d="M15.2 19.5c.2-2.4 1.7-4.3 3.8-5.1"/></svg></div><div><div class="stat-val" id="st-customers">0</div><div class="stat-lbl">Total Customers</div></div></div>
+          <div class="stat-card sc-acc"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></div><div><div class="stat-val" id="st-leads">0</div><div class="stat-lbl">Total Leads/Calls</div></div></div>
         </div>
         <div class="charts-grid">
           <div class="panel">
@@ -252,7 +254,7 @@ tbody tr:hover{background:var(--surface-2);}
           </div>
         </div>
         <div class="panel">
-          <div class="panel-head"><div class="panel-title">🕒 Recent Jobs</div><button class="abtn ab-pri" onclick="showSection('sec-jobs')">View All →</button></div>
+          <div class="panel-head"><div class="panel-title">Recent Jobs</div><button class="abtn ab-pri" onclick="showSection('sec-jobs')">View All →</button></div>
           <div class="table-scroll"><table><thead><tr><th>ID</th><th>Customer</th><th>Service</th><th>Location</th><th>Status</th></tr></thead><tbody id="recentJobsTb"></tbody></table></div>
         </div>
       </div>
@@ -260,17 +262,17 @@ tbody tr:hover{background:var(--surface-2);}
       <!-- LEADS / CALLS -->
       <div class="section" id="sec-leads">
         <div class="stats-grid">
-          <div class="stat-card sc-blue"><div class="stat-ico">📞</div><div><div class="stat-val" id="lead-st-total">0</div><div class="stat-lbl">Total Leads / Calls</div></div></div>
-          <div class="stat-card sc-yellow"><div class="stat-ico">🆕</div><div><div class="stat-val" id="lead-st-new">0</div><div class="stat-lbl">New (Not Contacted)</div></div></div>
-          <div class="stat-card sc-green"><div class="stat-ico">✅</div><div><div class="stat-val" id="lead-st-converted">0</div><div class="stat-lbl">Converted to Job</div></div></div>
-          <div class="stat-card sc-acc"><div class="stat-ico">📈</div><div><div class="stat-val" id="lead-st-rate">0%</div><div class="stat-lbl">Conversion Rate</div></div></div>
+          <div class="stat-card sc-blue"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></div><div><div class="stat-val" id="lead-st-total">0</div><div class="stat-lbl">Total Leads / Calls</div></div></div>
+          <div class="stat-card sc-yellow"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 3h6l2-3h4"/><path d="M5 12 3 5h18l-2 7"/><path d="M3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6"/></svg></div><div><div class="stat-val" id="lead-st-new">0</div><div class="stat-lbl">New (Not Contacted)</div></div></div>
+          <div class="stat-card sc-green"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.3 12.2l2.4 2.4 4.8-5"/></svg></div><div><div class="stat-val" id="lead-st-converted">0</div><div class="stat-lbl">Converted to Job</div></div></div>
+          <div class="stat-card sc-acc"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="14 6 21 6 21 13"/></svg></div><div><div class="stat-val" id="lead-st-rate">0%</div><div class="stat-lbl">Conversion Rate</div></div></div>
         </div>
         <div class="panel">
-          <div class="panel-head"><div class="panel-title">🔌 Connect MyOperator (auto call tracking)</div></div>
+          <div class="panel-head"><div class="panel-title">Connect MyOperator (auto call tracking)</div></div>
           <p style="font-size:12px;color:var(--text-sub);margin-bottom:10px;">Paste this URL into MyOperator's webhook/callback settings — every call will automatically appear here as a new lead, no manual CSV import needed. Field names differ by MyOperator plan; if calls don't map correctly, tell us what MyOperator actually sends and we'll adjust.</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <input class="search-in" id="webhookUrlBox" readonly style="flex:1;min-width:280px;font-family:monospace;font-size:12px;" value="Loading...">
-            <button class="abtn ab-pri" id="copyWebhookBtn">📋 Copy</button>
+            <button class="abtn ab-pri" id="copyWebhookBtn">Copy</button>
           </div>
         </div>
         <div class="charts-grid">
@@ -280,13 +282,13 @@ tbody tr:hover{background:var(--surface-2);}
             <div id="leadsSourceChart"></div>
           </div>
           <div class="panel">
-            <div class="panel-head"><div class="panel-title">📍 Location-wise Breakdown</div></div>
+            <div class="panel-head"><div class="panel-title">Location-wise Breakdown</div></div>
             <div class="table-scroll"><table><thead><tr><th>Location</th><th>Total Leads</th><th>Converted</th><th>Conv. Rate</th></tr></thead><tbody id="leadLocBreakdownTb"></tbody></table></div>
           </div>
         </div>
         <div class="panel">
           <div class="panel-head">
-            <div class="panel-title">📞 All Leads / Calls</div>
+            <div class="panel-title">All Leads / Calls</div>
             <div class="panel-acts">
               <input class="search-in" id="leadSearch" placeholder="Search name/phone...">
               <select class="filter-sel" id="leadLocFilter"><option value="">All Locations</option></select>
@@ -307,7 +309,7 @@ tbody tr:hover{background:var(--surface-2);}
                 <option value="converted">Converted</option>
                 <option value="lost">Lost</option>
               </select>
-              <button class="abtn ab-inv" onclick="openCsvImport()">⇪ Import CSV</button>
+              <button class="abtn ab-inv" onclick="openCsvImport()">Import CSV</button>
               <button class="abtn ab-pri" onclick="openLeadModal()">+ Add Lead</button>
             </div>
           </div>
@@ -319,7 +321,7 @@ tbody tr:hover{background:var(--surface-2);}
       <div class="section" id="sec-jobs">
         <div class="panel">
           <div class="panel-head">
-            <div class="panel-title">🔧 All Jobs</div>
+            <div class="panel-title">All Jobs</div>
             <div class="panel-acts">
               <input class="search-in" id="jobSearch" placeholder="Search job/customer...">
               <select class="filter-sel" id="statusFilter">
@@ -342,7 +344,7 @@ tbody tr:hover{background:var(--surface-2);}
       <!-- NEW JOB -->
       <div class="section" id="sec-new-job">
         <div class="panel" style="max-width:560px;">
-          <div class="panel-head"><div class="panel-title">➕ Create New Job</div></div>
+          <div class="panel-head"><div class="panel-title">Create New Job</div></div>
           <div class="m-grid">
             <div class="mf"><label>Customer Name *</label><input type="text" id="nj-cname" placeholder="Customer name"></div>
             <div class="mf"><label>Customer Phone *</label><input type="tel" id="nj-cphone" placeholder="9876543210"></div>
@@ -355,10 +357,10 @@ tbody tr:hover{background:var(--surface-2);}
             <div class="mf"><label>Priority</label><select id="nj-priority"><option value="normal">Normal</option><option value="urgent">Urgent</option><option value="vip">VIP</option></select></div>
             <div class="mf"><label>Assign Technician</label><select id="nj-tech"><option value="">Not assigned</option></select></div>
           </div>
-          <div class="mf"><label>📍 Location / Branch</label><select id="nj-location"><option value="">— Not specified —</option></select></div>
+          <div class="mf"><label>Location / Branch</label><select id="nj-location"><option value="">— Not specified —</option></select></div>
           <div class="mf"><label>Description / Notes</label><textarea id="nj-desc" placeholder="Notes about this job..."></textarea></div>
           <div style="display:flex;gap:10px;">
-            <button class="btn-save" id="createJobBtn">✅ Create Job</button>
+            <button class="btn-save" id="createJobBtn">Create Job</button>
             <button class="btn-cancel" onclick="showSection('sec-jobs')">Cancel</button>
           </div>
         </div>
@@ -367,7 +369,7 @@ tbody tr:hover{background:var(--surface-2);}
       <!-- TECHNICIANS -->
       <div class="section" id="sec-technicians">
         <div class="panel">
-          <div class="panel-head"><div class="panel-title">👤 Technicians</div><button class="abtn ab-pri" onclick="document.getElementById('techModal').classList.add('open')">+ Add</button></div>
+          <div class="panel-head"><div class="panel-title">Technicians</div><button class="abtn ab-pri" onclick="document.getElementById('techModal').classList.add('open')">+ Add</button></div>
           <div class="table-scroll"><table><thead><tr><th>Name</th><th>Phone</th><th>Skill</th><th>Completed Jobs</th><th>Action</th></tr></thead><tbody id="techsTb"></tbody></table></div>
         </div>
       </div>
@@ -375,7 +377,7 @@ tbody tr:hover{background:var(--surface-2);}
       <!-- CUSTOMERS -->
       <div class="section" id="sec-customers">
         <div class="panel">
-          <div class="panel-head"><div class="panel-title">👥 Customer History</div><input class="search-in" id="custSearch" placeholder="Search customer..."></div>
+          <div class="panel-head"><div class="panel-title">Customer History</div><input class="search-in" id="custSearch" placeholder="Search customer..."></div>
           <div class="table-scroll"><table><thead><tr><th>Name</th><th>Phone</th><th>Total Jobs</th><th>Last Service</th></tr></thead><tbody id="custTb"></tbody></table></div>
         </div>
       </div>
@@ -383,7 +385,7 @@ tbody tr:hover{background:var(--surface-2);}
       <!-- LOCATIONS -->
       <div class="section" id="sec-locations">
         <div class="panel">
-          <div class="panel-head"><div class="panel-title">📍 Locations / Branches</div><button class="abtn ab-pri" onclick="openLocationModal()">+ Add Location</button></div>
+          <div class="panel-head"><div class="panel-title">Locations / Branches</div><button class="abtn ab-pri" onclick="openLocationModal()">+ Add Location</button></div>
           <div class="table-scroll"><table><thead><tr><th>Name</th><th>Address</th><th>Phone</th><th>Action</th></tr></thead><tbody id="locationsTb"></tbody></table></div>
         </div>
       </div>
@@ -391,13 +393,13 @@ tbody tr:hover{background:var(--surface-2);}
       <!-- INVENTORY -->
       <div class="section" id="sec-inventory">
         <div class="stats-grid">
-          <div class="stat-card sc-blue"><div class="stat-ico">📦</div><div><div class="stat-val" id="inv-st-items">0</div><div class="stat-lbl">Total Items</div></div></div>
-          <div class="stat-card sc-yellow"><div class="stat-ico">⚠️</div><div><div class="stat-val" id="inv-st-low">0</div><div class="stat-lbl">Low Stock Alerts</div></div></div>
-          <div class="stat-card sc-green"><div class="stat-ico">💰</div><div><div class="stat-val" id="inv-st-value">₹0</div><div class="stat-lbl">Total Stock Value (cost)</div></div></div>
+          <div class="stat-card sc-blue"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></div><div><div class="stat-val" id="inv-st-items">0</div><div class="stat-lbl">Total Items</div></div></div>
+          <div class="stat-card sc-yellow"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div><div class="stat-val" id="inv-st-low">0</div><div class="stat-lbl">Low Stock Alerts</div></div></div>
+          <div class="stat-card sc-green"><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 8h5.2a2.3 2.3 0 0 1 0 4.6H9m0-4.6v8.6m0-4.3h5.2"/></svg></div><div><div class="stat-val" id="inv-st-value">₹0</div><div class="stat-lbl">Total Stock Value (cost)</div></div></div>
         </div>
         <div class="panel">
           <div class="panel-head">
-            <div class="panel-title">📦 Inventory (location-wise stock)</div>
+            <div class="panel-title">Inventory (location-wise stock)</div>
             <div class="panel-acts">
               <select class="filter-sel" id="invLocFilter"><option value="">All Locations</option></select>
               <button class="abtn ab-pri" onclick="openItemModal()">+ Add Item</button>
@@ -425,12 +427,12 @@ tbody tr:hover{background:var(--surface-2);}
       <div class="mf"><label>Status</label>
         <select id="jm-status">
           <option value="pending">⏳ Pending</option>
-          <option value="in_progress">🔧 In Progress</option>
-          <option value="waiting_parts">📦 Waiting Parts</option>
-          <option value="cost_sent">💰 Cost Sent</option>
-          <option value="completed">✔️ Completed</option>
-          <option value="delivered">🎉 Delivered</option>
-          <option value="cancelled">❌ Cancelled</option>
+          <option value="in_progress">In Progress</option>
+          <option value="waiting_parts">Waiting Parts</option>
+          <option value="cost_sent">Cost Sent</option>
+          <option value="completed">Completed</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
         </select>
       </div>
       <div class="mf"><label>Technician</label><select id="jm-tech"><option value="">Not assigned</option></select></div>
@@ -508,7 +510,7 @@ tbody tr:hover{background:var(--surface-2);}
 <!-- CSV IMPORT MODAL -->
 <div class="overlay" id="csvImportModal">
   <div class="modal" style="max-width:700px;">
-    <h3>⇪ Import Leads/Calls from CSV</h3>
+    <h3>Import Leads/Calls from CSV</h3>
     <p style="font-size:12px;color:var(--text-sub);margin:6px 0 14px;">Export your call log from MyOperator (or any CSV with Name/Phone/Location columns) and upload it here.</p>
     <div class="mf"><input type="file" id="csvFileInput" accept=".csv"></div>
     <div id="csvMappingWrap" class="hidden">
@@ -552,7 +554,7 @@ tbody tr:hover{background:var(--surface-2);}
 <!-- RESTOCK MODAL -->
 <div class="overlay" id="restockModal">
   <div class="modal">
-    <h3>📥 Restock Item</h3>
+    <h3>Restock Item</h3>
     <input type="hidden" id="rs-itemId">
     <div class="mf"><label>Location *</label><select id="rs-location"></select></div>
     <div class="mf"><label>Quantity to Add *</label><input type="number" id="rs-qty" placeholder="e.g. 10"></div>
@@ -567,7 +569,7 @@ tbody tr:hover{background:var(--surface-2);}
 <!-- USE STOCK MODAL -->
 <div class="overlay" id="useModal">
   <div class="modal">
-    <h3>📤 Use Stock (repair job)</h3>
+    <h3>Use Stock (repair job)</h3>
     <input type="hidden" id="us-itemId">
     <div class="mf"><label>Location *</label><select id="us-location"></select></div>
     <div class="mf"><label>Quantity Used *</label><input type="number" id="us-qty" placeholder="e.g. 1"></div>
@@ -735,7 +737,7 @@ function loadJobs(){
 }
 
 function statusTag(s){
-  var labels = { pending:'⏳ Pending', in_progress:'🔧 In Progress', waiting_parts:'📦 Waiting Parts', cost_sent:'💰 Cost Sent', completed:'✅ Completed', delivered:'📦 Delivered', cancelled:'❌ Cancelled' };
+  var labels = { pending:'Pending', in_progress:'In Progress', waiting_parts:'Waiting Parts', cost_sent:'Cost Sent', completed:'Completed', delivered:'Delivered', cancelled:'Cancelled' };
   return '<span class="tag '+s+'">'+(labels[s]||s)+'</span>';
 }
 
@@ -931,7 +933,7 @@ function deleteLocation(id){
 
 // ── LEADS / CALLS ──
 var LEAD_SOURCE_LABELS = { google_ads:'Google Ads', gmb:'GMB', myoperator:'MyOperator', walkin:'Walk-in', referral:'Referral', website:'Website', other:'Other' };
-var LEAD_STATUS_LABELS = { new:'🆕 New', contacted:'📞 Contacted', converted:'✅ Converted', lost:'❌ Lost' };
+var LEAD_STATUS_LABELS = { new:'New', contacted:'Contacted', converted:'Converted', lost:'Lost' };
 
 function loadLeadStats(){
   api('/leads/stats').then(function(d){
@@ -978,7 +980,7 @@ function renderLeads(){
         +(l.status==='new' ? '<button class="abtn ab-inv" onclick="setLeadStatus(\''+l._id+'\',\'contacted\')">Contacted</button>' : '')
         +(l.status!=='converted'&&l.status!=='lost' ? '<button class="abtn ab-gr" onclick="convertLeadToJob(\''+l._id+'\')">Convert to Job</button>' : '')
         +(l.status!=='lost'&&l.status!=='converted' ? '<button class="abtn ab-del" onclick="setLeadStatus(\''+l._id+'\',\'lost\')">Lost</button>' : '')
-        +'<button class="abtn ab-del" onclick="deleteLead(\''+l._id+'\')">🗑</button>'
+        +'<button class="abtn ab-del" onclick="deleteLead(\''+l._id+'\')">Delete</button>'
       +'</div></td>'
       +'</tr>';
   }).join('') : '<tr class="empty"><td colspan="6">No leads/calls yet — add manually or import CSV from MyOperator</td></tr>';
@@ -1155,12 +1157,12 @@ function renderInventory(){
         +'<td style="font-weight:600;">'+item.name+'</td>'
         +'<td style="font-size:12px;color:var(--text-sub);">'+(item.sku||'—')+'</td>'
         +'<td style="font-size:12px;">'+s.location+'</td>'
-        +'<td style="font-weight:700;'+(low?'color:var(--red);':'')+'">'+s.quantity+' '+item.unit+(low?' ⚠️':'')+'</td>'
+        +'<td style="font-weight:700;'+(low?'color:var(--red);':'')+'">'+s.quantity+' '+item.unit+(low?' · Low':'')+'</td>'
         +'<td>₹'+item.costPrice+'</td>'
         +'<td>₹'+item.sellPrice+'</td>'
         +'<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'
-          +'<button class="abtn ab-gr" onclick="openRestockModal(\''+item._id+'\')">📥 Restock</button>'
-          +'<button class="abtn ab-inv" onclick="openUseModal(\''+item._id+'\')">📤 Use</button>'
+          +'<button class="abtn ab-gr" onclick="openRestockModal(\''+item._id+'\')">Restock</button>'
+          +'<button class="abtn ab-inv" onclick="openUseModal(\''+item._id+'\')">Use</button>'
           +'<button class="abtn ab-pri" onclick="editItem(\''+item._id+'\')">Edit</button>'
           +'<button class="abtn ab-del" onclick="deleteItem(\''+item._id+'\')">Delete</button>'
         +'</div></td>'
