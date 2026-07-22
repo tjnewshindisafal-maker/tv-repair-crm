@@ -18,6 +18,10 @@
   --radius:12px;--radius-lg:16px;
   --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px -1px rgba(0,0,0,.04);
   --font:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  /* dataviz palette — validated categorical + chart chrome tokens */
+  --viz-surface:#fcfcfb;--viz-text-primary:#0b0b0b;--viz-text-secondary:#52514e;--viz-muted:#898781;
+  --viz-gridline:#e1e0d9;--viz-baseline:#c3c2b7;
+  --series-1:#2a78d6;--series-2:#eb6834;--series-3:#1baf7a;--series-4:#eda100;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;}
@@ -75,6 +79,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15
 .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
 .panel-title{font-size:16px;font-weight:700;}
 .panel-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+/* ── CHARTS (dataviz) ── */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr;}}
+.chart-card-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.chart-card-sub{font-size:12px;color:var(--text-sub);margin-bottom:14px;}
+.chart-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-sub);margin-top:12px;}
+.chart-legend-item{display:flex;align-items:center;gap:6px;}
+.chart-legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+.chart-empty{text-align:center;padding:30px;color:var(--muted);font-size:13px;}
+.chart-tooltip{position:absolute;display:none;background:#0b0b0b;color:#fff;font-size:12px;line-height:1.5;padding:8px 10px;border-radius:8px;pointer-events:none;z-index:50;box-shadow:0 8px 20px rgba(0,0,0,.25);white-space:nowrap;}
 
 .table-scroll{overflow-x:auto;}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);}
@@ -197,6 +212,19 @@ tbody tr:hover{background:var(--surface-2);}
           <div class="stat-card sc-blue"><div class="stat-ico">👥</div><div><div class="stat-val" id="st-customers">0</div><div class="stat-lbl">Total Customers</div></div></div>
           <div class="stat-card sc-acc"><div class="stat-ico">📞</div><div><div class="stat-val" id="st-leads">0</div><div class="stat-lbl">Total Leads/Calls</div></div></div>
         </div>
+        <div class="charts-grid">
+          <div class="panel">
+            <div class="chart-card-title">Revenue — last 14 days</div>
+            <div class="chart-card-sub">Job cost collected per day</div>
+            <div id="revenueChart" style="position:relative;"></div>
+          </div>
+          <div class="panel">
+            <div class="chart-card-title">Job Status Breakdown</div>
+            <div class="chart-card-sub">All jobs by current stage</div>
+            <div id="jobStatusChart"></div>
+            <div class="chart-legend" id="jobStatusLegend"></div>
+          </div>
+        </div>
         <div class="panel">
           <div class="panel-head"><div class="panel-title">🕒 Recent Jobs</div><button class="abtn ab-pri" onclick="showSection('sec-jobs')">View All →</button></div>
           <div class="table-scroll"><table><thead><tr><th>ID</th><th>Customer</th><th>Service</th><th>Location</th><th>Status</th></tr></thead><tbody id="recentJobsTb"></tbody></table></div>
@@ -219,9 +247,16 @@ tbody tr:hover{background:var(--surface-2);}
             <button class="abtn ab-pri" id="copyWebhookBtn">📋 Copy</button>
           </div>
         </div>
-        <div class="panel">
-          <div class="panel-head"><div class="panel-title">📍 Location-wise Breakdown</div></div>
-          <div class="table-scroll"><table><thead><tr><th>Location</th><th>Total Leads</th><th>Converted</th><th>Conv. Rate</th></tr></thead><tbody id="leadLocBreakdownTb"></tbody></table></div>
+        <div class="charts-grid">
+          <div class="panel">
+            <div class="chart-card-title">Leads by Source</div>
+            <div class="chart-card-sub">Where every enquiry is coming from</div>
+            <div id="leadsSourceChart"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">📍 Location-wise Breakdown</div></div>
+            <div class="table-scroll"><table><thead><tr><th>Location</th><th>Total Leads</th><th>Converted</th><th>Conv. Rate</th></tr></thead><tbody id="leadLocBreakdownTb"></tbody></table></div>
+          </div>
         </div>
         <div class="panel">
           <div class="panel-head">
@@ -652,6 +687,8 @@ function loadJobs(){
     document.getElementById('pendingBadge').textContent = pending;
     renderRecentJobs(allJobs.slice(0,6));
     renderAllJobs();
+    renderRevenueChart(allJobs);
+    renderJobStatusChart(allJobs);
   });
 }
 
@@ -869,6 +906,7 @@ function loadLeadStats(){
       var rate = v.total ? Math.round((v.converted/v.total)*100) : 0;
       return '<tr><td style="font-weight:600;">'+loc+'</td><td>'+v.total+'</td><td>'+v.converted+'</td><td>'+rate+'%</td></tr>';
     }).join('') : '<tr class="empty"><td colspan="4">No leads yet</td></tr>';
+    renderLeadsSourceChart(d.bySource || {});
   });
 }
 function loadLeads(){
@@ -1188,6 +1226,158 @@ document.getElementById('saveUseBtn').addEventListener('click', function(){
     loadInventory();
   });
 });
+
+// ══════════════════════════ CHARTS (dataviz) ══════════════════════════
+function svgEl(tag, attrs){
+  var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (var k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+// Horizontal bar with a rounded right end, square at the baseline (left).
+function roundedBarPath(x, y, w, h, r){
+  r = Math.min(r, w, h/2);
+  if (w <= 0) return '';
+  return 'M '+x+','+y+' H '+(x+w-r)+' Q '+(x+w)+','+y+' '+(x+w)+','+(y+r)+' V '+(y+h-r)
+    +' Q '+(x+w)+','+(y+h)+' '+(x+w-r)+','+(y+h)+' H '+x+' Z';
+}
+
+// data: [{label, value, color}]. opts: {valuePrefix, valueSuffix}
+function renderBarChart(containerId, data, opts){
+  opts = opts || {};
+  var container = document.getElementById(containerId);
+  if (!data.length){ container.innerHTML = '<div class="chart-empty">No data yet</div>'; return; }
+  var w = container.clientWidth || 380;
+  var barH = 20, gap = 16, leftPad = 100, rightPad = 56, topPad = 4;
+  var maxVal = Math.max.apply(null, data.map(function(d){ return d.value; })) || 1;
+  var h = data.length * (barH + gap);
+  var svg = svgEl('svg', { width:'100%', height:h, viewBox:'0 0 '+w+' '+h });
+  data.forEach(function(d, i){
+    var y = topPad + i * (barH + gap) - topPad;
+    var barW = Math.max(3, (w - leftPad - rightPad) * (d.value / maxVal));
+    var label = svgEl('text', { x:leftPad-10, y:y+barH/2+4, 'text-anchor':'end', 'font-size':12, fill:'var(--viz-text-secondary)' });
+    label.textContent = d.label.length > 16 ? d.label.slice(0,15)+'…' : d.label;
+    svg.appendChild(label);
+    var bg = svgEl('rect', { x:leftPad, y:y, width:w-leftPad-rightPad, height:barH, rx:4, fill:'var(--viz-gridline)', opacity:0.4 });
+    svg.appendChild(bg);
+    var path = svgEl('path', { d: roundedBarPath(leftPad, y, barW, barH, 4), fill: d.color || 'var(--series-1)' });
+    svg.appendChild(path);
+    var val = svgEl('text', { x:leftPad+barW+8, y:y+barH/2+4, 'font-size':12, 'font-weight':700, fill:'var(--viz-text-primary)' });
+    val.textContent = (opts.valuePrefix||'') + d.value.toLocaleString('en-IN') + (opts.valueSuffix||'');
+    svg.appendChild(val);
+  });
+  container.innerHTML = '';
+  container.appendChild(svg);
+}
+
+// points: [{label, value}]
+// Rounds up to a clean axis max (1/2/5 × 10^n) so ticks read as round numbers.
+function niceCeil(v){
+  if (v <= 0) return 10;
+  var exp = Math.pow(10, Math.floor(Math.log10(v)));
+  var frac = v / exp;
+  var niceFrac = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
+  return niceFrac * exp;
+}
+
+function renderLineChart(containerId, points, opts){
+  opts = opts || {};
+  var container = document.getElementById(containerId);
+  if (!points.length){ container.innerHTML = '<div class="chart-empty">No data yet</div>'; return; }
+  var w = container.clientWidth || 380, h = opts.height || 180;
+  var padL = 52, padR = 12, padT = 12, padB = 22;
+  var rawMax = Math.max.apply(null, points.map(function(p){ return p.value; })) || 1;
+  var maxVal = niceCeil(rawMax);
+  var stepX = (w - padL - padR) / Math.max(1, points.length - 1);
+  function xAt(i){ return padL + i * stepX; }
+  function yAt(v){ return padT + (h - padT - padB) * (1 - v / maxVal); }
+
+  var svg = svgEl('svg', { width:'100%', height:h, viewBox:'0 0 '+w+' '+h });
+  for (var g = 0; g <= 2; g++){
+    var gy = padT + (h - padT - padB) * (g / 2);
+    svg.appendChild(svgEl('line', { x1:padL, x2:w-padR, y1:gy, y2:gy, stroke:'var(--viz-gridline)', 'stroke-width':1 }));
+    var tickVal = Math.round(maxVal * (1 - g/2));
+    var tick = svgEl('text', { x:padL-8, y:gy+3, 'text-anchor':'end', 'font-size':10, fill:'var(--viz-muted)' });
+    tick.textContent = (opts.valuePrefix||'') + tickVal.toLocaleString('en-IN');
+    svg.appendChild(tick);
+  }
+  var linePts = points.map(function(p,i){ return xAt(i)+','+yAt(p.value); }).join(' L ');
+  var areaPath = 'M '+xAt(0)+','+yAt(0)+' L '+linePts+' L '+xAt(points.length-1)+','+yAt(0)+' Z';
+  svg.appendChild(svgEl('path', { d:areaPath, fill:'var(--series-1)', opacity:0.1, stroke:'none' }));
+  svg.appendChild(svgEl('path', { d:'M '+linePts, fill:'none', stroke:'var(--series-1)', 'stroke-width':2, 'stroke-linejoin':'round', 'stroke-linecap':'round' }));
+  var lastIdx = points.length - 1;
+  svg.appendChild(svgEl('circle', { cx:xAt(lastIdx), cy:yAt(points[lastIdx].value), r:5, fill:'var(--series-1)', stroke:'var(--viz-surface)', 'stroke-width':2 }));
+
+  var skip = points.length > 8 ? Math.ceil(points.length/6) : 1;
+  points.forEach(function(p,i){
+    if (i % skip !== 0 && i !== points.length-1) return;
+    var t = svgEl('text', { x:xAt(i), y:h-6, 'text-anchor':'middle', 'font-size':10, fill:'var(--viz-muted)' });
+    t.textContent = p.label;
+    svg.appendChild(t);
+  });
+
+  container.innerHTML = '';
+  container.style.position = 'relative';
+  container.appendChild(svg);
+
+  var tooltip = document.createElement('div');
+  tooltip.className = 'chart-tooltip';
+  container.appendChild(tooltip);
+  points.forEach(function(p,i){
+    var hit = svgEl('rect', { x:Math.max(0,xAt(i)-stepX/2), y:0, width:stepX, height:h, fill:'transparent' });
+    hit.addEventListener('mouseenter', function(){
+      tooltip.style.display = 'block';
+      tooltip.innerHTML = '<b>'+p.label+'</b><br>'+(opts.valuePrefix||'')+p.value.toLocaleString('en-IN');
+    });
+    hit.addEventListener('mousemove', function(e){
+      var rect = container.getBoundingClientRect();
+      var left = e.clientX - rect.left + 12;
+      if (left + 120 > w) left = e.clientX - rect.left - 120;
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = (e.clientY - rect.top - 34) + 'px';
+    });
+    hit.addEventListener('mouseleave', function(){ tooltip.style.display = 'none'; });
+    svg.appendChild(hit);
+  });
+}
+
+function renderRevenueChart(jobs){
+  var days = [];
+  for (var i = 13; i >= 0; i--){
+    var d = new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0);
+    days.push({ key: d.toDateString(), label: d.getDate()+'/'+(d.getMonth()+1), value: 0 });
+  }
+  jobs.forEach(function(j){
+    if (!j.cost) return;
+    var jd = new Date(j.createdAt); jd.setHours(0,0,0,0);
+    var day = days.find(function(dd){ return dd.key === jd.toDateString(); });
+    if (day) day.value += parseFloat(j.cost) || 0;
+  });
+  renderLineChart('revenueChart', days, { valuePrefix:'₹' });
+}
+
+function renderJobStatusChart(jobs){
+  var groups = [
+    { label:'Pending', color:'var(--series-1)', match:['pending'] },
+    { label:'In Progress', color:'var(--series-2)', match:['in_progress','waiting_parts','cost_sent'] },
+    { label:'Completed', color:'var(--series-3)', match:['completed','delivered'] },
+    { label:'Cancelled', color:'var(--series-4)', match:['cancelled'] }
+  ];
+  var data = groups.map(function(g){
+    return { label:g.label, color:g.color, value: jobs.filter(function(j){ return g.match.indexOf(j.status)!==-1; }).length };
+  });
+  renderBarChart('jobStatusChart', data);
+  document.getElementById('jobStatusLegend').innerHTML = groups.map(function(g){
+    return '<div class="chart-legend-item"><span class="chart-legend-dot" style="background:'+g.color+';"></span>'+g.label+'</div>';
+  }).join('');
+}
+
+function renderLeadsSourceChart(bySource){
+  var data = Object.keys(bySource).map(function(k){
+    return { label: LEAD_SOURCE_LABELS[k] || k, value: bySource[k] };
+  }).sort(function(a,b){ return b.value - a.value; });
+  renderBarChart('leadsSourceChart', data, { });
+}
 </script>
 </body>
 </html>
